@@ -17,3 +17,10 @@ test('el admin edita cualquiera; nadie edita anulados ni cargas iniciales', () =
   expect(puedeEditar(ev({ anulado: true }), admin, ahora)).toBe(false)
   expect(puedeEditar(ev({ id: null }), admin, ahora)).toBe(false)
 })
+
+test('el límite de 15 minutos es inclusivo como en el servidor (solo rechaza más de 900 s)', () => {
+  const justo = new Date(ahora.getTime() - 15 * 60 * 1000).toISOString()
+  const pasado = new Date(ahora.getTime() - 15 * 60 * 1000 - 1000).toISOString()
+  expect(puedeEditar(ev({ registrado_at: justo }), guarda, ahora)).toBe(true)
+  expect(puedeEditar(ev({ registrado_at: pasado }), guarda, ahora)).toBe(false)
+})
