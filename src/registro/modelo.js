@@ -61,7 +61,8 @@ export function pasosPara(estado, motivo) {
   })
 }
 
-const vacio = (v) => !String(v ?? '').trim()
+const texto = (v) => String(v ?? '').trim()
+const vacio = (v) => !texto(v)
 
 export function validarPaso(paso, estado, motivo) {
   switch (paso) {
@@ -92,7 +93,8 @@ export function validarPaso(paso, estado, motivo) {
       return null
     }
     case 'detalles':
-      return estado.kilometraje === '' || /^\d{1,7}$/.test(String(estado.kilometraje)) ? null : 'Kilometraje inválido'
+      if (estado.kilometraje === '') return null
+      return /^\d{1,7}$/.test(String(estado.kilometraje)) && Number(estado.kilometraje) <= 5000000 ? null : 'Kilometraje inválido'
     default:
       return null
   }
@@ -100,29 +102,30 @@ export function validarPaso(paso, estado, motivo) {
 
 export function construirCuerpo(estado, motivo, { forzar = false } = {}) {
   const cuerpo = { sentido: estado.sentido, placa: normalizarPlaca(estado.placa), motivo_id: estado.motivoId }
-  if (!estado.tipoConocido) cuerpo.tipo_vehiculo = estado.tipo
+  if (!(estado.sugerencia && estado.sugerencia.vehiculo)) cuerpo.tipo_vehiculo = estado.tipo
   const c = estado.conductor
   if (estado.tipo === 'PROPIO') {
     if (c.modo === 'otro') {
       cuerpo.conductor_otro = true
-      cuerpo.conductor_nombre = c.nombre.trim()
+      cuerpo.conductor_nombre = texto(c.nombre)
+      if (!vacio(c.documento)) cuerpo.conductor_documento = texto(c.documento)
     } else {
       // El nombre viaja por si el AD no responde en el servidor (lo acepta con la lista incompleta).
       cuerpo.conductor_usuario = c.usuario
-      cuerpo.conductor_nombre = c.nombre.trim()
+      cuerpo.conductor_nombre = texto(c.nombre)
     }
     if (estado.kilometraje !== '') cuerpo.kilometraje = Number(estado.kilometraje)
   } else {
-    cuerpo.empresa = estado.empresa.trim()
-    cuerpo.conductor_nombre = c.nombre.trim()
-    cuerpo.conductor_documento = c.documento.trim()
+    cuerpo.empresa = texto(estado.empresa)
+    cuerpo.conductor_nombre = texto(c.nombre)
+    cuerpo.conductor_documento = texto(c.documento)
     if (estado.guardarEnCatalogo && !(estado.sugerencia && estado.sugerencia.vehiculo_externo)) cuerpo.guardar_en_catalogo = true
   }
   const r = estado.referencia
   if (motivo && motivo.tipo_referencia === 'ASISTENCIA' && r.asistenciaId) cuerpo.asistencia_id = r.asistenciaId
   if (motivo && motivo.tipo_referencia === 'EXEQUIA' && r.exequiaId) cuerpo.exequia_id = r.exequiaId
-  if (motivo && motivo.tipo_referencia === 'TEXTO' && !vacio(r.texto)) cuerpo.referencia_texto = r.texto.trim()
-  if (!vacio(estado.observaciones)) cuerpo.observaciones = estado.observaciones.trim()
+  if (motivo && motivo.tipo_referencia === 'TEXTO' && !vacio(r.texto)) cuerpo.referencia_texto = texto(r.texto)
+  if (!vacio(estado.observaciones)) cuerpo.observaciones = texto(estado.observaciones)
   if (forzar) cuerpo.forzar = true
   return cuerpo
 }

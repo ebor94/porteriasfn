@@ -106,12 +106,14 @@ describe('validarPaso', () => {
     expect(validarPaso('detalles', { ...base(), kilometraje: '12a' }, null)).toBe('Kilometraje inválido')
     expect(validarPaso('detalles', { ...base(), kilometraje: '' }, null)).toBeNull()
     expect(validarPaso('detalles', { ...base(), kilometraje: '1500' }, null)).toBeNull()
+    expect(validarPaso('detalles', { ...base(), kilometraje: '5000000' }, null)).toBeNull()
+    expect(validarPaso('detalles', { ...base(), kilometraje: '5000001' }, null)).toBe('Kilometraje inválido')
   })
 })
 
 describe('construirCuerpo', () => {
   test('propio con conductor del AD, asistencia y kilometraje', () => {
-    const e = { ...estadoInicial('SALIDA'), placa: 'abc-123', tipo: 'PROPIO', tipoConocido: true, motivoId: 2,
+    const e = { ...estadoInicial('SALIDA'), placa: 'abc-123', sugerencia: { vehiculo: { id: 9 } }, tipo: 'PROPIO', tipoConocido: true, motivoId: 2,
       conductor: { modo: 'ad', usuario: 'jperez', nombre: 'Juan', documento: '' },
       referencia: { asistenciaId: 50, exequiaId: null, texto: 'ignorado', etiqueta: '' }, kilometraje: '1200', observaciones: '  ' }
     expect(construirCuerpo(e, ASIST)).toEqual({
@@ -120,7 +122,7 @@ describe('construirCuerpo', () => {
   })
 
   test('propio con "otro", exequia, observación y forzado', () => {
-    const e = { ...estadoInicial('INGRESO'), placa: 'ABC123', tipo: 'PROPIO', tipoConocido: true, motivoId: 3,
+    const e = { ...estadoInicial('INGRESO'), placa: 'ABC123', sugerencia: { vehiculo: { id: 9 } }, tipo: 'PROPIO', tipoConocido: true, motivoId: 3,
       conductor: { modo: 'otro', usuario: 'x', nombre: ' Pedro ', documento: '' },
       referencia: { asistenciaId: null, exequiaId: 8, texto: '', etiqueta: '' }, observaciones: ' Llegó sin registrar salida ' }
     expect(construirCuerpo(e, EXEQ, { forzar: true })).toEqual({
@@ -138,6 +140,24 @@ describe('construirCuerpo', () => {
       conductor_documento: '99', guardar_en_catalogo: true, referencia_texto: 'Repuestos'
     })
   })
+})
+
+test('construirCuerpo: proveedor conocido sin catálogo envía tipo_vehiculo', () => {
+  const e = { ...estadoInicial('SALIDA'), placa: 'XYZ1', sugerencia: { vehiculo: null, vehiculo_externo: null }, tipo: 'PROVEEDOR', tipoConocido: true, motivoId: 4,
+    empresa: 'Flores SA', conductor: { modo: 'ad', usuario: null, nombre: 'Ana', documento: '1' } }
+  expect(construirCuerpo(e, NINGUNA)).toMatchObject({ tipo_vehiculo: 'PROVEEDOR' })
+})
+
+test('construirCuerpo: propio "otro" con documento lo envía', () => {
+  const e = { ...estadoInicial('INGRESO'), placa: 'ABC123', sugerencia: { vehiculo: { id: 9 } }, tipo: 'PROPIO', tipoConocido: true, motivoId: 1,
+    conductor: { modo: 'otro', usuario: null, nombre: 'Pedro', documento: ' 55 ' } }
+  expect(construirCuerpo(e, NINGUNA)).toMatchObject({ conductor_otro: true, conductor_nombre: 'Pedro', conductor_documento: '55' })
+})
+
+test('construirCuerpo: no lanza con nulos', () => {
+  const e = { ...estadoInicial('INGRESO'), placa: 'NEW1', sugerencia: null, tipo: 'PROVEEDOR', motivoId: 4, empresa: null, observaciones: null,
+    conductor: { modo: 'ad', usuario: null, nombre: null, documento: null }, referencia: { asistenciaId: null, exequiaId: null, texto: null, etiqueta: '' } }
+  expect(() => construirCuerpo(e, TEXTO)).not.toThrow()
 })
 
 test('detalleInconsistencia', () => {
