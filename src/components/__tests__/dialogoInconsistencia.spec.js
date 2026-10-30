@@ -15,3 +15,11 @@ test('exige observación para registrar igual', async () => {
   await w.get('[data-test=inconsistencia-cancelar]').trigger('click')
   expect(w.emitted('cancelar')).toHaveLength(1)
 })
+
+test('pre-llena la observación del guarda y permite registrar de una vez', async () => {
+  const w = mount(DialogoInconsistencia, { props: { mensaje: 'm', observacionInicial: 'Ya lo escribí' } })
+  expect(w.get('[data-test=inconsistencia-observacion]').element.value).toBe('Ya lo escribí')
+  expect(w.get('[data-test=inconsistencia-registrar]').attributes('disabled')).toBeUndefined()
+  await w.get('[data-test=inconsistencia-registrar]').trigger('click')
+  expect(w.emitted('registrar-igual')).toEqual([['Ya lo escribí']])
+})

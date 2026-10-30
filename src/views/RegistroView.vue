@@ -34,10 +34,39 @@ const paso = computed(() => pasos.value[indice.value])
 const esPropio = computed(() => estado.tipo === 'PROPIO')
 const TIPOS = [{ valor: 'PROVEEDOR', texto: 'Proveedor' }, { valor: 'PROVEEDOR_ASISTENCIA', texto: 'Proveedor de asistencias' }]
 
-watch(() => [estado.tipo, estado.sentido], async ([tipo, sentido]) => {
-  motivos.value = tipo && sentido ? await catalogos.motivos(tipo, sentido) : []
-  // El motivo propuesto por la salida abierta puede no aplicar al nuevo sentido.
-  if (estado.motivoId && !motivos.value.some((m) => m.id === estado.motivoId)) estado.motivoId = null
+const motivosError = ref('')
+const errorVisible = computed(() => error.value || (paso.value === 'motivo' ? motivosError.value : ''))
+let peticionMotivos = 0
+let peticionPlaca = 0
+
+async function cargarMotivos() {
+  const numero = ++peticionMotivos
+  const { tipo, sentido } = estado
+  motivosError.value = ''
+  if (!tipo || !sentido) {
+    motivos.value = []
+    return
+  }
+  try {
+    const lista = await catalogos.motivos(tipo, sentido)
+    if (numero !== peticionMotivos) return
+    motivos.value = lista
+    if (error.value && error.value === motivosError.value) error.value = ''
+    // El motivo propuesto por la salida abierta puede no aplicar al nuevo sentido.
+    if (estado.motivoId && !lista.some((m) => m.id === estado.motivoId)) estado.motivoId = null
+  } catch (e) {
+    if (numero !== peticionMotivos) return
+    motivos.value = []
+    motivosError.value = e.message
+    error.value = e.message
+  }
+}
+
+watch(() => [estado.tipo, estado.sentido], cargarMotivos)
+
+// Si cambian los pasos (p. ej. el motivo ya no pide referencia), el índice no puede quedar fuera.
+watch(pasos, (lista) => {
+  if (indice.value > lista.length - 1) indice.value = lista.length - 1
 })
 
 onMounted(async () => {
@@ -55,12 +84,15 @@ async function consultarPlaca() {
     error.value = 'Escribe la placa'
     return
   }
+  const numero = ++peticionPlaca
   try {
     const sentido = estado.sentido
     Object.assign(estado, estadoInicial(sentido), { placa })
-    aplicarSugerencia(estado, await estadoStore.sugerir(placa))
+    const sugerencia = await estadoStore.sugerir(placa)
+    if (numero !== peticionPlaca) return
+    aplicarSugerencia(estado, sugerencia)
   } catch (e) {
-    error.value = e.message
+    if (numero === peticionPlaca) error.value = e.message
   }
 }
 
@@ -86,11 +118,13 @@ async function enviar(forzar) {
   error.value = ''
   try {
     const ev = await eventos.registrar(construirCuerpo(estado, motivo.value, { forzar }))
-    toast.success(`${ev.sentido === 'INGRESO' ? 'Ingreso' : 'Salida'} de ${ev.placa} registrado`)
+    toast.success(`${ev.sentido === 'INGRESO' ? 'Ingreso' : 'Salida'} de ${ev.placa} ${ev.sentido === 'INGRESO' ? 'registrado' : 'registrada'}`)
     router.replace('/inicio')
   } catch (e) {
     if (e.status === 409 && e.motivo === 'SENTIDO_INCOHERENTE') {
       inconsistencia.value = { mensaje: e.message, detalle: detalleInconsistencia(e.errors && e.errors.estado, auth.nombreSede) }
+    } else if (e.motivo === 'SIN_CONEXION') {
+      error.value = 'Sin conexión: no se pudo confirmar el registro. Revisa los movimientos antes de reintentar.'
     } else {
       error.value = e.message
     }
@@ -108,7 +142,8 @@ function registrarIgual(observacion) {
 const buscarConductor = async (q) => {
   const lista = await catalogos.conductores()
   const t = q.toLowerCase()
-  return t ? lista.filter((c) => c.nombre.toLowerCase().includes(t) || c.usuario.toLowerCase().includes(t)) : lista
+  const tiene = (x) => String(x ?? '').toLowerCase().includes(t)
+  return t ? lista.filter((c) => tiene(c.nombre) || tiene(c.usuario)) : lista
 }
 function elegirConductor(c) {
   estado.conductor = { modo: 'ad', usuario: c.usuario, nombre: c.nombre, documento: '' }
@@ -196,6 +231,7 @@ const etiquetaExequia = (x) => `${x.es_de_la_placa ? '★ ' : ''}${x.tipo || 'Ex
           :class="estado.motivoId === m.id ? 'bg-primary-700 text-white border-primary-700' : 'bg-white border-gray-300'"
           :data-test="`registro-motivo-${m.id}`" @click="estado.motivoId = m.id"
         >{{ m.nombre }}</button>
+        <button v-if="motivosError" type="button" class="btn-secundario w-full" data-test="registro-motivos-reintentar" @click="cargarMotivos">Reintentar</button>
       </section>
 
       <section v-else-if="paso === 'referencia'" class="space-y-3" data-test="paso-referencia">
@@ -236,15 +272,15 @@ const etiquetaExequia = (x) => `${x.es_de_la_placa ? '★ ' : ''}${x.tipo || 'Ex
         <p>Conductor: {{ estado.conductor.nombre || estado.conductor.usuario }}</p>
         <p v-if="!esPropio">Empresa: {{ estado.empresa }}</p>
         <p>Motivo: {{ motivo ? motivo.nombre : '' }}</p>
-        <p v-if="estado.referencia.etiqueta || estado.referencia.texto">Referencia: {{ estado.referencia.etiqueta || estado.referencia.texto }}</p>
+        <p v-if="motivo && motivo.tipo_referencia !== 'NINGUNA' && (estado.referencia.etiqueta || estado.referencia.texto)">Referencia: {{ estado.referencia.etiqueta || estado.referencia.texto }}</p>
         <p v-if="estado.kilometraje">Kilometraje: {{ estado.kilometraje }}</p>
         <p v-if="estado.observaciones">Observaciones: {{ estado.observaciones }}</p>
       </section>
 
-      <p v-if="error" class="aviso-error" data-test="registro-error">{{ error }}</p>
+      <p v-if="errorVisible" class="aviso-error" data-test="registro-error">{{ errorVisible }}</p>
 
       <div class="grid grid-cols-2 gap-3 pt-2">
-        <button type="button" class="btn-secundario" data-test="registro-atras" @click="atras">Atrás</button>
+        <button type="button" class="btn-secundario" data-test="registro-atras" :disabled="enviando" @click="atras">Atrás</button>
         <button type="button" class="btn-primario" :disabled="enviando" data-test="registro-siguiente" @click="siguiente">
           {{ paso === 'confirmar' ? (enviando ? 'Registrando…' : 'Registrar') : 'Siguiente' }}
         </button>
@@ -252,7 +288,7 @@ const etiquetaExequia = (x) => `${x.es_de_la_placa ? '★ ' : ''}${x.tipo || 'Ex
     </div>
 
     <DialogoInconsistencia
-      v-if="inconsistencia" :mensaje="inconsistencia.mensaje" :detalle="inconsistencia.detalle"
+      v-if="inconsistencia" :mensaje="inconsistencia.mensaje" :detalle="inconsistencia.detalle" :observacion-inicial="estado.observaciones"
       @registrar-igual="registrarIgual" @cancelar="inconsistencia = null"
     />
   </MarcoGuarda>

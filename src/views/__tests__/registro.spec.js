@@ -8,7 +8,8 @@ vi.mock('@/services/api', () => ({
   porteria: { get: vi.fn(), post: vi.fn() },
   tokenStorage: { leer: () => 't', guardar: () => {} }
 }))
-vi.mock('vue-toastification', () => ({ useToast: () => ({ success: vi.fn(), error: vi.fn() }) }))
+const toastExito = vi.hoisted(() => vi.fn())
+vi.mock('vue-toastification', () => ({ useToast: () => ({ success: toastExito, error: vi.fn() }) }))
 
 import { porteria } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
@@ -159,4 +160,114 @@ test('los campos de texto respetan los límites del servidor', async () => {
   expect(w.get('[data-test=registro-empresa]').attributes('maxlength')).toBe('150')
   expect(w.get('[data-test=registro-conductor-nombre]').attributes('maxlength')).toBe('150')
   expect(w.get('[data-test=registro-conductor-documento]').attributes('maxlength')).toBe('30')
+})
+
+function diferido() {
+  const d = {}
+  d.promesa = new Promise((resolve, reject) => { d.resolve = resolve; d.reject = reject })
+  return d
+}
+
+async function consultar(w, placa = 'abc123') {
+  await w.get('[data-test=registro-placa]').setValue(placa)
+  await w.get('[data-test=registro-consultar]').trigger('click')
+  await flushPromises()
+}
+
+async function hastaMotivo(w) {
+  await avanzar(w)
+  await vi.advanceTimersByTimeAsync(300)
+  await flushPromises()
+  await w.get('[data-test=buscable-item]').trigger('click')
+  await avanzar(w)
+  expect(w.find('[data-test=paso-motivo]').exists()).toBe(true)
+}
+
+test('la respuesta de motivos de un sentido viejo no pisa la nueva', async () => {
+  const base = porteria.get.getMockImplementation()
+  const porSentido = { SALIDA: diferido(), INGRESO: diferido() }
+  porteria.get.mockImplementation(async (url, cfg) => (url === '/catalogos/motivos' ? porSentido[cfg.params.sentido].promesa : base(url, cfg)))
+  const { w } = await montar()
+  await consultar(w)
+  await w.get('[data-test=registro-sentido-INGRESO]').trigger('click')
+  await flushPromises()
+  porSentido.INGRESO.resolve({ data: [{ id: 7, nombre: 'Visita', tipo_referencia: 'NINGUNA', referencia_obligatoria: false }] })
+  await flushPromises()
+  porSentido.SALIDA.resolve({ data: MOTIVOS })
+  await flushPromises()
+  await hastaMotivo(w)
+  expect(w.find('[data-test=registro-motivo-7]').exists()).toBe(true)
+  expect(w.find('[data-test=registro-motivo-6]').exists()).toBe(false)
+})
+
+test('si falla la carga de motivos se muestra el error y "Reintentar" recarga', async () => {
+  const base = porteria.get.getMockImplementation()
+  let llamadas = 0
+  porteria.get.mockImplementation(async (url, cfg) => {
+    if (url === '/catalogos/motivos' && ++llamadas === 1) throw new Error('No se pudo cargar los motivos')
+    return base(url, cfg)
+  })
+  const { w } = await montar()
+  await consultar(w)
+  await hastaMotivo(w)
+  expect(w.get('[data-test=registro-error]').text()).toBe('No se pudo cargar los motivos')
+  expect(w.find('[data-test=registro-motivo-6]').exists()).toBe(false)
+  await w.get('[data-test=registro-motivos-reintentar]').trigger('click')
+  await flushPromises()
+  expect(w.find('[data-test=registro-error]').exists()).toBe(false)
+  expect(w.find('[data-test=registro-motivos-reintentar]').exists()).toBe(false)
+  expect(w.find('[data-test=registro-motivo-6]').exists()).toBe(true)
+})
+
+test('editar la placa tras consultar no deja avanzar hasta consultar de nuevo', async () => {
+  const { w } = await montar()
+  await consultar(w)
+  await w.get('[data-test=registro-placa]').setValue('abc124')
+  await avanzar(w)
+  expect(w.get('[data-test=registro-error]').text()).toBe('Consulta la placa')
+  expect(w.find('[data-test=paso-placa]').exists()).toBe(true)
+})
+
+test('la respuesta de una consulta de placa vieja se descarta', async () => {
+  const base = porteria.get.getMockImplementation()
+  const porPlaca = { ABC123: diferido(), XYZ987: diferido() }
+  porteria.get.mockImplementation(async (url, cfg) => {
+    const placa = url.startsWith('/estado/placa/') ? url.split('/').pop() : null
+    return placa ? porPlaca[placa].promesa : base(url, cfg)
+  })
+  const { w } = await montar()
+  await consultar(w, 'abc123')
+  await consultar(w, 'xyz987')
+  porPlaca.XYZ987.resolve({ data: { ...SUGERENCIA, placa: 'XYZ987', vehiculo: { id: 10, placa: 'XYZ987' } } })
+  await flushPromises()
+  porPlaca.ABC123.resolve({ data: SUGERENCIA })
+  await flushPromises()
+  expect(w.get('[data-test=registro-placa]').element.value).toBe('XYZ987')
+  expect(w.get('.tarjeta').text()).toContain('XYZ987')
+})
+
+test('sin conexión al registrar avisa que se revisen los movimientos', async () => {
+  porteria.post.mockRejectedValue({ motivo: 'SIN_CONEXION', message: 'Sin red' })
+  const { w } = await montar()
+  await llenarHastaConfirmar(w)
+  await avanzar(w)
+  expect(w.get('[data-test=registro-error]').text()).toBe('Sin conexión: no se pudo confirmar el registro. Revisa los movimientos antes de reintentar.')
+})
+
+test('el toast concuerda con el sentido y Atrás se deshabilita mientras se envía', async () => {
+  const envio = diferido()
+  porteria.post.mockReturnValue(envio.promesa)
+  const { w } = await montar()
+  await llenarHastaConfirmar(w)
+  await avanzar(w)
+  expect(w.get('[data-test=registro-atras]').attributes('disabled')).toBeDefined()
+  envio.resolve({ data: { id: 1, sentido: 'SALIDA', placa: 'ABC123' } })
+  await flushPromises()
+  expect(toastExito).toHaveBeenCalledWith('Salida de ABC123 registrada')
+})
+
+test('la referencia solo aparece al confirmar si el motivo la pide', async () => {
+  const { w } = await montar()
+  await llenarHastaConfirmar(w)
+  expect(w.get('[data-test=paso-confirmar]').text()).not.toContain('Referencia')
 })

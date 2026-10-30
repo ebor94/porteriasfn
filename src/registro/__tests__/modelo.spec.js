@@ -70,11 +70,13 @@ test('pasosPara omite tipo conocido y referencia que no aplica', () => {
 })
 
 describe('validarPaso', () => {
-  const base = () => ({ ...estadoInicial('SALIDA'), placa: 'ABC123', sugerencia: {}, tipo: 'PROPIO', tipoConocido: true })
+  const base = () => ({ ...estadoInicial('SALIDA'), placa: 'ABC123', sugerencia: { placa: 'ABC123' }, tipo: 'PROPIO', tipoConocido: true })
 
   test('placa', () => {
     expect(validarPaso('placa', { ...estadoInicial(), placa: ' - ' }, null)).toBe('Escribe la placa')
     expect(validarPaso('placa', { ...estadoInicial(), placa: 'ABC123' }, null)).toBe('Consulta la placa')
+    expect(validarPaso('placa', { ...base(), placa: 'abc-124' }, null)).toBe('Consulta la placa')
+    expect(validarPaso('placa', { ...base(), placa: 'abc-123' }, null)).toBeNull()
     expect(validarPaso('placa', { ...base(), sentido: null }, null)).toBe('Elige si es ingreso o salida')
     expect(validarPaso('placa', base(), null)).toBeNull()
   })

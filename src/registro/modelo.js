@@ -68,7 +68,7 @@ export function validarPaso(paso, estado, motivo) {
   switch (paso) {
     case 'placa':
       if (!normalizarPlaca(estado.placa)) return 'Escribe la placa'
-      if (!estado.sugerencia) return 'Consulta la placa'
+      if (!estado.sugerencia || normalizarPlaca(estado.placa) !== estado.sugerencia.placa) return 'Consulta la placa'
       if (!estado.sentido) return 'Elige si es ingreso o salida'
       return null
     case 'tipo':

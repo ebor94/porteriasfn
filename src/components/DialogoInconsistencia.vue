@@ -1,9 +1,13 @@
 <script setup>
 import { ref, computed } from 'vue'
 
-defineProps({ mensaje: { type: String, required: true }, detalle: { type: String, default: '' } })
+const props = defineProps({
+  mensaje: { type: String, required: true },
+  detalle: { type: String, default: '' },
+  observacionInicial: { type: String, default: '' }
+})
 const emit = defineEmits(['registrar-igual', 'cancelar'])
-const observacion = ref('')
+const observacion = ref(props.observacionInicial)
 const lista = computed(() => observacion.value.trim().length > 0)
 </script>
 
