@@ -43,3 +43,11 @@ test('en las rutas públicas un fallo de red no redirige (evita bucles)', async 
   const sinRed = { token: 't', usuario: null, cargarPerfil: vi.fn(async () => { throw { status: 0, motivo: 'SIN_CONEXION' } }) }
   expect(await guardia(ruta('/sin-conexion', { publica: true }), sinRed)).toBe(true)
 })
+
+test('en rutas públicas distintas de /login no se llama a cargarPerfil', async () => {
+  const sesion = { token: 't', usuario: null, cargarPerfil: vi.fn() }
+  expect(await guardia(ruta('/sin-conexion', { publica: true }), sesion)).toBe(true)
+  expect(sesion.cargarPerfil).not.toHaveBeenCalled()
+  await guardia(ruta('/login', { publica: true }), { ...sesion, cargarPerfil: sesion.cargarPerfil })
+  expect(sesion.cargarPerfil).toHaveBeenCalledTimes(1)
+})

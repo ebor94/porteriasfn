@@ -21,12 +21,13 @@ export function decidirNavegacion(to, auth) {
 }
 
 export async function guardia(to, auth) {
-  if (auth.token && !auth.usuario) {
+  const publica = Boolean(to.meta && to.meta.publica)
+  // Las rutas públicas (salvo /login, que redirige si ya hay sesión) no necesitan el perfil.
+  if (auth.token && !auth.usuario && (!publica || to.path === '/login')) {
     try {
       await auth.cargarPerfil()
     } catch (e) {
       // 401: cargarPerfil ya cerró sesión; se avisa en /login que la sesión venció.
-      const publica = Boolean(to.meta && to.meta.publica)
       if (e && e.status === 401) {
         if (!publica) return { path: '/login', query: { redirect: to.fullPath, motivo: 'SESION_EXPIRADA' } }
       } else if (!publica) {

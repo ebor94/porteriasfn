@@ -10,6 +10,7 @@ import { useCatalogosStore } from '@/stores/catalogos'
 import { useEstadoStore } from '@/stores/estado'
 import { useEventosStore } from '@/stores/eventos'
 import { normalizarPlaca } from '@/utils/placa'
+import { esNavegacionDeHistorial } from '@/utils/rutas'
 import { estadoInicial, aplicarSugerencia, elegirMotivo, pasosPara, validarPaso, construirCuerpo, detalleInconsistencia } from '@/registro/modelo'
 
 const route = useRoute()
@@ -144,11 +145,12 @@ async function enviar(forzar) {
   }
 }
 
-// El "atrás" del sistema retrocede un paso del asistente; en el primero, confirma antes de perder la placa.
-onBeforeRouteLeave(() => {
+// Un "atrás" de historial retrocede un paso del asistente; una navegación explícita (enlaces, push) sale,
+// con confirmación si hay placa escrita.
+onBeforeRouteLeave((to) => {
   if (registrado || !auth.token) return true
   if (enviando.value) return false
-  if (indice.value > 0) {
+  if (indice.value > 0 && esNavegacionDeHistorial(to)) {
     error.value = ''
     indice.value -= 1
     return false

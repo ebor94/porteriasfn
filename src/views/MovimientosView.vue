@@ -13,7 +13,7 @@ const auth = useAuthStore()
 const toast = useToast()
 const error = ref('')
 const cargando = ref(true)
-const procesandoId = ref(null)
+const procesando = ref(new Set())
 const dialogo = ref(null) // { tipo: 'anular' | 'km', evento }
 
 onMounted(cargar)
@@ -31,16 +31,16 @@ async function cargar() {
 }
 
 function abrir(tipo, evento) {
-  if (procesandoId.value === evento.id) return
+  if (procesando.value.has(evento.id)) return
   dialogo.value = { tipo, evento }
 }
 
 async function aceptar(valor) {
   const { tipo, evento } = dialogo.value
   dialogo.value = null
-  if (procesandoId.value === evento.id) return
+  if (procesando.value.has(evento.id)) return
   error.value = ''
-  procesandoId.value = evento.id
+  procesando.value = new Set(procesando.value).add(evento.id)
   try {
     if (tipo === 'anular') {
       await eventos.anular(evento.id, valor)
@@ -57,7 +57,9 @@ async function aceptar(valor) {
     if (e.status === 409 || e.motivo === 'SIN_CONEXION') await cargar()
     error.value = mensaje
   } finally {
-    procesandoId.value = null
+    const resto = new Set(procesando.value)
+    resto.delete(evento.id)
+    procesando.value = resto
   }
 }
 </script>
@@ -79,8 +81,8 @@ async function aceptar(valor) {
         </div>
         <p class="text-gray-700">{{ e.motivo ? e.motivo.nombre : '' }} · {{ e.conductor_nombre }}<template v-if="e.kilometraje !== null && e.kilometraje !== undefined"> · {{ e.kilometraje }} km</template></p>
         <div v-if="puedeEditar(e, auth.usuario)" class="flex gap-2">
-          <button v-if="e.tipo_vehiculo === 'PROPIO'" type="button" class="btn-secundario" data-test="movimiento-km" :disabled="procesandoId === e.id" @click="abrir('km', e)">Corregir km</button>
-          <button type="button" class="btn-peligro" data-test="movimiento-anular" :disabled="procesandoId === e.id" @click="abrir('anular', e)">Anular</button>
+          <button v-if="e.tipo_vehiculo === 'PROPIO'" type="button" class="btn-secundario" data-test="movimiento-km" :disabled="procesando.has(e.id)" @click="abrir('km', e)">Corregir km</button>
+          <button type="button" class="btn-peligro" data-test="movimiento-anular" :disabled="procesando.has(e.id)" @click="abrir('anular', e)">Anular</button>
         </div>
       </li>
     </ul>

@@ -148,3 +148,26 @@ test('un error anterior se limpia al iniciar la siguiente acción', async () => 
   envio.resolve({ data: { id: 1, sentido: 'SALIDA', placa: 'CAR1', motivo: { nombre: 'Tanqueo' }, registrado_por: 'g1', registrado_at: reciente(), anulado: true } })
   await flushPromises()
 })
+
+test('terminar una fila no desbloquea otra que sigue en proceso', async () => {
+  porteria.get.mockResolvedValue({ data: { items: [fila(1), fila(2)], total: 2 } })
+  const envios = { 1: diferido(), 2: diferido() }
+  porteria.post.mockImplementation((url) => envios[url.split('/')[2]].promesa)
+  const w = montar()
+  await flushPromises()
+  const anular = async (i) => {
+    await w.findAll('[data-test=movimiento-fila]')[i].get('[data-test=movimiento-anular]').trigger('click')
+    await w.get('[data-test=dialogo-texto]').setValue('Error')
+    await w.get('[data-test=dialogo-aceptar]').trigger('click')
+    await flushPromises()
+  }
+  await anular(0)
+  await anular(1)
+  const bloqueado = (i) => w.findAll('[data-test=movimiento-fila]')[i].get('[data-test=movimiento-anular]').attributes('disabled') !== undefined
+  expect(bloqueado(0) && bloqueado(1)).toBe(true)
+  envios[2].resolve({ data: { ...fila(2), anulado: true } })
+  await flushPromises()
+  expect(bloqueado(0)).toBe(true)
+  envios[1].resolve({ data: { ...fila(1), anulado: true } })
+  await flushPromises()
+})

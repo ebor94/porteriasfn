@@ -6,6 +6,7 @@ import { createRouter, createMemoryHistory } from 'vue-router'
 vi.mock('@/services/api', () => ({ porteria: { get: vi.fn() }, tokenStorage: { leer: () => 't', guardar: () => {} } }))
 
 import { porteria } from '@/services/api'
+import { useAuthStore } from '@/stores/auth'
 import SinConexionView from '@/views/SinConexionView.vue'
 
 async function montar(query = {}) {
@@ -61,4 +62,18 @@ test('si la sesión venció mientras tanto, va al login', async () => {
   await flushPromises()
   expect(router.currentRoute.value.path).toBe('/login')
   expect(router.currentRoute.value.query.motivo).toBe('SESION_EXPIRADA')
+})
+
+test('con Portería deshabilitada muestra ese aviso en vez del de sin conexión y lo repite al reintentar', async () => {
+  const { w } = await montar({ redirect: '/vehiculos' })
+  useAuthStore().fijarServicio(false)
+  await w.vm.$nextTick()
+  const aviso = 'Portería no está disponible en este momento. Avisa a TI.'
+  expect(w.get('[role=alert]').text()).toBe(aviso)
+  expect(w.text()).not.toContain('No se pudo comprobar tu sesión')
+  porteria.get.mockRejectedValue({ status: 503, motivo: 'PORTERIA_DESHABILITADA', message: 'x' })
+  await w.get('[data-test=sin-conexion-reintentar]').trigger('click')
+  await flushPromises()
+  expect(w.findAll('[role=alert]')).toHaveLength(1)
+  expect(w.get('[data-test=sin-conexion-error]').text()).toBe(aviso)
 })

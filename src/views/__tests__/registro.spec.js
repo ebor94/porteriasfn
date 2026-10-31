@@ -5,6 +5,9 @@ import { createPinia, setActivePinia } from 'pinia'
 import { createRouter, createMemoryHistory, RouterView } from 'vue-router'
 import { h } from 'vue'
 
+const esHistorial = vi.hoisted(() => vi.fn(() => false))
+vi.mock('@/utils/rutas', async (original) => ({ ...(await original()), esNavegacionDeHistorial: esHistorial }))
+
 vi.mock('@/services/api', () => ({
   porteria: { get: vi.fn(), post: vi.fn() },
   tokenStorage: { leer: () => 't', guardar: () => {} }
@@ -57,6 +60,8 @@ beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true })
   setActivePinia(createPinia())
   vi.clearAllMocks()
+  esHistorial.mockReset()
+  esHistorial.mockReturnValue(false)
   porteria.get.mockReset()
   porteria.post.mockReset()
   useAuthStore().usuario = { usuario: 'g1', nombre: 'G', rol: 'guarda', sede: { id: 1, nombre: 'Norte' } }
@@ -337,10 +342,33 @@ test('el atrás del sistema retrocede un paso del asistente en vez de salir', as
   await consultar(w)
   await avanzar(w)
   expect(w.find('[data-test=paso-conductor]').exists()).toBe(true)
+  esHistorial.mockReturnValue(true)
   await router.push('/inicio').catch(() => {})
   await flushPromises()
   expect(router.currentRoute.value.path).toBe('/registrar')
   expect(w.find('[data-test=paso-placa]').exists()).toBe(true)
+})
+
+test('un enlace de la barra en el paso 4 con placa pide confirmar y, si acepta, sale', async () => {
+  const confirmar = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true)
+  const { w, router } = await montar()
+  await consultar(w)
+  await avanzar(w)
+  await vi.advanceTimersByTimeAsync(300)
+  await flushPromises()
+  await w.get('[data-test=buscable-item]').trigger('click')
+  await avanzar(w)
+  expect(w.find('[data-test=paso-motivo]').exists()).toBe(true)
+  esHistorial.mockReturnValue(false)
+  await router.push('/inicio')
+  await flushPromises()
+  expect(confirmar).toHaveBeenCalledWith('¿Salir sin registrar?')
+  expect(router.currentRoute.value.path).toBe('/registrar')
+  expect(w.find('[data-test=paso-motivo]').exists()).toBe(true)
+  await router.push('/inicio')
+  await flushPromises()
+  expect(router.currentRoute.value.path).toBe('/inicio')
+  confirmar.mockRestore()
 })
 
 test('en el primer paso con placa escrita pide confirmar la salida', async () => {
