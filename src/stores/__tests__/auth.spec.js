@@ -12,6 +12,9 @@ vi.mock('@/services/api', () => {
 import { porteria, tokenStorage } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import { confirmar, confirmacion } from '@/composables/confirmar'
+import { useConsultaStore } from '@/stores/consulta'
+import { useMotivosStore } from '@/stores/motivos'
+import { useProveedoresStore } from '@/stores/proveedores'
 
 const SEDES = [{ id: 1, codigo: 'N', nombre: 'Norte', ciudad: 'Cúcuta' }]
 
@@ -78,4 +81,31 @@ test('el admin sin sede empieza en la administración', () => {
   expect(auth.rutaInicio).toBe('/admin')
   auth.usuario = { usuario: 'a', rol: 'admin_porteria', sede: { id: 1 } }
   expect(auth.rutaInicio).toBe('/inicio')
+})
+
+test('logout vacía los motivos del admin', () => {
+  const motivos = useMotivosStore()
+  motivos.lista = [{ id: 1, nombre: 'Tanqueo' }]
+  useAuthStore().logout()
+  expect(motivos.lista).toEqual([])
+})
+
+test('una respuesta en vuelo de la consulta o de proveedores no repuebla la store tras logout', async () => {
+  const consulta = useConsultaStore()
+  const proveedores = useProveedoresStore()
+  let resolverConsulta
+  let resolverProveedores
+  porteria.get
+    .mockReturnValueOnce(new Promise((r) => { resolverConsulta = r }))
+    .mockReturnValueOnce(new Promise((r) => { resolverProveedores = r }))
+  const buscando = consulta.buscar()
+  const buscandoProveedores = proveedores.buscar('flo')
+  useAuthStore().logout()
+  resolverConsulta({ data: { items: [{ id: 1 }], total: 1, pagina: 1 } })
+  resolverProveedores({ data: [{ id: 2, placa: 'FLO123' }] })
+  await buscando
+  await buscandoProveedores
+  expect(consulta.items).toEqual([])
+  expect(consulta.aplicados).toBeNull()
+  expect(proveedores.lista).toEqual([])
 })

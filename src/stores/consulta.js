@@ -8,7 +8,8 @@ const filtrosIniciales = () => ({ sede: 'todas', desde: hoyLocal(), hasta: hoyLo
 // Un Excel de muchas filas tarda más que una consulta normal.
 const TIEMPO_EXCEL = 120000
 
-// Generación de la consulta: cada buscar la incrementa; las respuestas de generaciones anteriores se descartan.
+// Generación de la consulta: cada buscar (y reiniciar) la incrementa; las respuestas de generaciones
+// anteriores se descartan.
 let generacion = 0
 
 export function paramsDe(f) {
@@ -45,7 +46,14 @@ export const useConsultaStore = defineStore('consulta', {
     },
     async cargarMas() {
       const mia = generacion
-      const { data } = await porteria.get('/eventos', { params: { ...this.aplicados, pagina: this.pagina + 1 } })
+      let data
+      try {
+        ({ data } = await porteria.get('/eventos', { params: { ...this.aplicados, pagina: this.pagina + 1 } }))
+      } catch (e) {
+        // El error de una página de filtros anteriores ya no le importa a nadie.
+        if (mia !== generacion) return
+        throw e
+      }
       // Si hubo otra búsqueda mientras tanto, esta página es de filtros anteriores.
       if (mia !== generacion) return
       const vistos = new Set(this.items.map((e) => e.id))
@@ -79,6 +87,11 @@ export const useConsultaStore = defineStore('consulta', {
     reemplazar(evento) {
       const i = this.items.findIndex((e) => e.id === evento.id)
       if (i >= 0) this.items.splice(i, 1, evento)
+    },
+    // Al cerrar sesión: además de vaciar, invalida las respuestas en vuelo.
+    reiniciar() {
+      generacion++
+      this.$reset()
     }
   }
 })

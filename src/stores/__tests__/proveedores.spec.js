@@ -50,3 +50,25 @@ test('una respuesta vieja de buscar no pisa la lista de la búsqueda más recien
   await viejo
   expect(p.lista.map((v) => v.id)).toEqual([2])
 })
+
+test('una búsqueda en vuelo no pisa una edición o un alta que terminó después de pedirla', async () => {
+  const p = useProveedoresStore()
+  porteria.get.mockResolvedValueOnce({ data: [{ id: 1, placa: 'AAA111', activo: false }] })
+  await p.buscar('')
+  let resolverBusqueda
+  porteria.get.mockReturnValueOnce(new Promise((r) => { resolverBusqueda = r }))
+  const buscando = p.buscar('aaa')
+  porteria.patch.mockResolvedValue({ data: { id: 1, placa: 'AAA111', activo: true } })
+  await p.actualizar(1, { activo: true })
+  resolverBusqueda({ data: [{ id: 1, placa: 'AAA111', activo: false }] })
+  await buscando
+  expect(p.lista).toEqual([{ id: 1, placa: 'AAA111', activo: true }])
+
+  porteria.get.mockReturnValueOnce(new Promise((r) => { resolverBusqueda = r }))
+  const otra = p.buscar('')
+  porteria.post.mockResolvedValue({ data: { id: 2, placa: 'BBB222', activo: true } })
+  await p.crear({ placa: 'BBB222', tipo: 'PROVEEDOR', empresa: 'X', descripcion: null })
+  resolverBusqueda({ data: [{ id: 1, placa: 'AAA111', activo: false }] })
+  await otra
+  expect(p.lista.map((v) => v.id)).toEqual([2, 1])
+})

@@ -118,3 +118,26 @@ test('corregir, anular y recargar reemplazan la fila', async () => {
   expect(porteria.get).toHaveBeenCalledWith('/eventos/1')
   expect(c.items).toEqual([{ id: 1, kilometraje: 6 }, { id: 2, anulado: true }])
 })
+
+test('el error tardío de un cargarMas de una búsqueda anterior no se propaga', async () => {
+  const c = useConsultaStore()
+  let rechazarMas
+  porteria.get.mockResolvedValueOnce({ data: { items: [{ id: 5 }], total: 3, pagina: 1 } })
+  await c.buscar()
+  porteria.get.mockReturnValueOnce(new Promise((resolve, reject) => { rechazarMas = reject }))
+  const mas = c.cargarMas()
+  porteria.get.mockResolvedValueOnce({ data: { items: [{ id: 9 }], total: 1, pagina: 1 } })
+  await c.buscar()
+  rechazarMas({ status: 0, message: 'Sin conexión con el servidor' })
+  await expect(mas).resolves.toBeUndefined()
+  expect(c.items.map((e) => e.id)).toEqual([9])
+})
+
+test('el error de un cargarMas vigente sí se propaga', async () => {
+  const c = useConsultaStore()
+  porteria.get
+    .mockResolvedValueOnce({ data: { items: [{ id: 5 }], total: 3, pagina: 1 } })
+    .mockRejectedValueOnce({ status: 0, message: 'Sin conexión con el servidor' })
+  await c.buscar()
+  await expect(c.cargarMas()).rejects.toMatchObject({ message: 'Sin conexión con el servidor' })
+})

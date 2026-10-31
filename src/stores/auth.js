@@ -67,8 +67,8 @@ export const useAuthStore = defineStore('auth', {
       useEventosStore().$reset()
       useCatalogosStore().limpiar()
       useMotivosStore().$reset()
-      useProveedoresStore().$reset()
-      useConsultaStore().$reset()
+      useProveedoresStore().reiniciar()
+      useConsultaStore().reiniciar()
     }
   }
 })
