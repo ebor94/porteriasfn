@@ -14,17 +14,25 @@ const emit = defineEmits(['elegir'])
 const texto = ref('')
 const resultados = ref([])
 const error = ref('')
+const buscando = ref(false)
+const buscado = ref(false)
 let temporizador = null
 let ultima = 0
 
 async function ejecutar() {
   const numero = ++ultima
   error.value = ''
+  buscando.value = true
   try {
     const items = await props.buscar(texto.value.trim())
-    if (numero === ultima) resultados.value = items
+    if (numero === ultima) {
+      resultados.value = items
+      buscado.value = true
+    }
   } catch (e) {
     if (numero === ultima) error.value = e.message || 'No se pudo buscar'
+  } finally {
+    if (numero === ultima) buscando.value = false
   }
 }
 
@@ -40,7 +48,9 @@ onBeforeUnmount(() => clearTimeout(temporizador))
 <template>
   <div class="space-y-2">
     <input v-model="texto" class="campo" :placeholder="placeholder" data-test="buscable-texto" @input="alEscribir" />
-    <p v-if="error" class="aviso-error">{{ error }}</p>
+    <p v-if="error" class="aviso-error" role="alert">{{ error }}</p>
+    <p v-else-if="buscando" class="text-gray-600" data-test="buscable-buscando">Buscando…</p>
+    <p v-else-if="buscado && !resultados.length" class="text-gray-600" data-test="buscable-vacio">Sin resultados</p>
     <ul class="space-y-2">
       <li v-for="item in resultados" :key="clave(item)">
         <button

@@ -41,7 +41,7 @@ function registrar(fila) {
         Propios fuera ({{ estado.fuera.length }})
       </button>
     </div>
-    <p v-if="error" class="aviso-error mb-3">{{ error }}</p>
+    <p v-if="error" class="aviso-error mb-3" role="alert">{{ error }}</p>
     <p v-if="!filas.length && !estado.cargando" class="text-gray-600">No hay vehículos.</p>
     <ul class="space-y-3">
       <li v-for="f in filas" :key="f.placa" class="tarjeta flex items-center justify-between gap-3" data-test="vehiculo-fila">
@@ -52,7 +52,7 @@ function registrar(fila) {
             {{ f.carga_inicial ? 'Carga inicial' : (f.motivo ? f.motivo.nombre : '') }}
           </p>
           <p class="text-sm text-gray-600">
-            {{ haceCuanto(f.registrado_at) }}<template v-if="vista === 'fuera' && f.sede_id"> · salió por {{ auth.nombreSede(f.sede_id) }}</template>
+            {{ haceCuanto(f.registrado_at) }}<template v-if="vista === 'fuera' && f.sede_id"> · salió por {{ auth.nombreSede(f.sede_id) || `Sede #${f.sede_id}` }}</template>
           </p>
         </div>
         <button type="button" class="btn-secundario shrink-0" data-test="vehiculo-accion" @click="registrar(f)">

@@ -43,3 +43,16 @@ test('dentro y fuera con acción rápida', async () => {
   await flushPromises()
   expect(router.currentRoute.value.fullPath).toBe('/registrar/INGRESO?placa=CAR2')
 })
+
+test('si la sede no está en el catálogo muestra su número', async () => {
+  const base = porteria.get.getMockImplementation()
+  porteria.get.mockImplementation(async (url) => (url === '/estado/fuera'
+    ? { data: [{ id: 2, placa: 'CAR2', tipo_vehiculo: 'PROPIO', sede_id: 7, motivo: { nombre: 'Exequias' }, registrado_at: new Date().toISOString() }] }
+    : base(url)))
+  const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/vehiculos', component: VehiculosView }] })
+  router.push('/vehiculos?vista=fuera')
+  await router.isReady()
+  const w = mount(VehiculosView, { global: { plugins: [router], stubs: { MarcoGuarda: { template: '<div><slot /></div>' } } } })
+  await flushPromises()
+  expect(w.get('[data-test=vehiculo-fila]').text()).toContain('salió por Sede #7')
+})

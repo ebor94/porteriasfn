@@ -12,22 +12,35 @@ const eventos = useEventosStore()
 const auth = useAuthStore()
 const toast = useToast()
 const error = ref('')
+const cargando = ref(true)
+const procesandoId = ref(null)
 const dialogo = ref(null) // { tipo: 'anular' | 'km', evento }
 
 onMounted(cargar)
 
 async function cargar() {
   error.value = ''
+  cargando.value = true
   try {
     await eventos.cargarDelDia()
   } catch (e) {
     error.value = e.message
+  } finally {
+    cargando.value = false
   }
+}
+
+function abrir(tipo, evento) {
+  if (procesandoId.value === evento.id) return
+  dialogo.value = { tipo, evento }
 }
 
 async function aceptar(valor) {
   const { tipo, evento } = dialogo.value
   dialogo.value = null
+  if (procesandoId.value === evento.id) return
+  error.value = ''
+  procesandoId.value = evento.id
   try {
     if (tipo === 'anular') {
       await eventos.anular(evento.id, valor)
@@ -43,14 +56,18 @@ async function aceptar(valor) {
     // 409 MODIFICADO/ANULADO o corte de red: los datos en pantalla pueden no ser los del servidor.
     if (e.status === 409 || e.motivo === 'SIN_CONEXION') await cargar()
     error.value = mensaje
+  } finally {
+    procesandoId.value = null
   }
 }
 </script>
 
 <template>
   <MarcoGuarda titulo="Movimientos de hoy">
-    <p v-if="error" class="aviso-error mb-3">{{ error }}</p>
-    <p v-if="!eventos.delDia.length" class="text-gray-600">Sin movimientos hoy.</p>
+    <p v-if="error" class="aviso-error mb-3" role="alert" data-test="movimientos-error">{{ error }}</p>
+    <p v-if="cargando && !eventos.delDia.length" class="text-gray-600">Cargando…</p>
+    <p v-else-if="!eventos.delDia.length && !error" class="text-gray-600">Sin movimientos hoy.</p>
+    <p v-if="eventos.total > eventos.delDia.length" class="text-gray-600 mb-3" data-test="movimientos-parcial">Mostrando {{ eventos.delDia.length }} de {{ eventos.total }}</p>
     <ul class="space-y-3">
       <li v-for="e in eventos.delDia" :key="e.id" class="tarjeta space-y-2" :class="e.anulado ? 'opacity-60' : ''" data-test="movimiento-fila">
         <div class="flex items-center justify-between gap-2">
@@ -62,8 +79,8 @@ async function aceptar(valor) {
         </div>
         <p class="text-gray-700">{{ e.motivo ? e.motivo.nombre : '' }} · {{ e.conductor_nombre }}<template v-if="e.kilometraje !== null && e.kilometraje !== undefined"> · {{ e.kilometraje }} km</template></p>
         <div v-if="puedeEditar(e, auth.usuario)" class="flex gap-2">
-          <button v-if="e.tipo_vehiculo === 'PROPIO'" type="button" class="btn-secundario" data-test="movimiento-km" @click="dialogo = { tipo: 'km', evento: e }">Corregir km</button>
-          <button type="button" class="btn-peligro" data-test="movimiento-anular" @click="dialogo = { tipo: 'anular', evento: e }">Anular</button>
+          <button v-if="e.tipo_vehiculo === 'PROPIO'" type="button" class="btn-secundario" data-test="movimiento-km" :disabled="procesandoId === e.id" @click="abrir('km', e)">Corregir km</button>
+          <button type="button" class="btn-peligro" data-test="movimiento-anular" :disabled="procesandoId === e.id" @click="abrir('anular', e)">Anular</button>
         </div>
       </li>
     </ul>

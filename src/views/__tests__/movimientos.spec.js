@@ -74,3 +74,77 @@ test('sin conexión al anular: avisa y recarga la lista', async () => {
   expect(w.text()).toContain('Sin conexión: no se pudo confirmar. Revisa la lista antes de reintentar.')
   expect(porteria.get.mock.calls.length).toBe(llamadas + 1)
 })
+
+const fila = (id) => ({ id, sentido: 'SALIDA', placa: `CAR${id}`, tipo_vehiculo: 'PROPIO', motivo: { nombre: 'Tanqueo' }, conductor_nombre: 'Juan', registrado_por: 'g1', registrado_at: reciente(), anulado: false, inconsistente: false })
+
+function diferido() {
+  const d = {}
+  d.promesa = new Promise((resolve, reject) => { d.resolve = resolve; d.reject = reject })
+  return d
+}
+
+test('mientras carga dice "Cargando…" y no "Sin movimientos hoy."', async () => {
+  const espera = diferido()
+  porteria.get.mockReturnValue(espera.promesa)
+  const w = montar()
+  await flushPromises()
+  expect(w.text()).toContain('Cargando…')
+  expect(w.text()).not.toContain('Sin movimientos hoy.')
+  espera.resolve({ data: { items: [], total: 0 } })
+  await flushPromises()
+  expect(w.text()).not.toContain('Cargando…')
+  expect(w.text()).toContain('Sin movimientos hoy.')
+})
+
+test('si hay más movimientos que los mostrados lo dice', async () => {
+  porteria.get.mockResolvedValue({ data: { items: [fila(1), fila(2)], total: 7 } })
+  const w = montar()
+  await flushPromises()
+  expect(w.get('[data-test=movimientos-parcial]').text()).toBe('Mostrando 2 de 7')
+})
+
+test('sin más movimientos que los mostrados no hay aviso parcial', async () => {
+  const w = montar()
+  await flushPromises()
+  expect(w.find('[data-test=movimientos-parcial]').exists()).toBe(false)
+})
+
+test('mientras se anula, los botones de la fila se deshabilitan y no se envía dos veces', async () => {
+  const envio = diferido()
+  porteria.post.mockReturnValue(envio.promesa)
+  const w = montar()
+  await flushPromises()
+  const primera = () => w.findAll('[data-test=movimiento-fila]')[0]
+  await primera().get('[data-test=movimiento-anular]').trigger('click')
+  await w.get('[data-test=dialogo-texto]').setValue('Error')
+  await w.get('[data-test=dialogo-aceptar]').trigger('click')
+  await flushPromises()
+  expect(primera().get('[data-test=movimiento-anular]').attributes('disabled')).toBeDefined()
+  expect(primera().get('[data-test=movimiento-km]').attributes('disabled')).toBeDefined()
+  await primera().get('[data-test=movimiento-anular]').trigger('click')
+  expect(w.find('[data-test=dialogo-texto]').exists()).toBe(false)
+  envio.resolve({ data: { id: 1, sentido: 'SALIDA', placa: 'CAR1', motivo: { nombre: 'Tanqueo' }, registrado_por: 'g1', registrado_at: reciente(), anulado: true } })
+  await flushPromises()
+  expect(porteria.post).toHaveBeenCalledTimes(1)
+})
+
+test('un error anterior se limpia al iniciar la siguiente acción', async () => {
+  porteria.post.mockRejectedValueOnce({ status: 422, motivo: 'VALIDACION', message: 'Motivo inválido' })
+  const w = montar()
+  await flushPromises()
+  const anular = async () => {
+    await w.findAll('[data-test=movimiento-fila]')[0].get('[data-test=movimiento-anular]').trigger('click')
+    await w.get('[data-test=dialogo-texto]').setValue('Error')
+    await w.get('[data-test=dialogo-aceptar]').trigger('click')
+  }
+  await anular()
+  await flushPromises()
+  expect(w.get('[data-test=movimientos-error]').text()).toBe('Motivo inválido')
+  const envio = diferido()
+  porteria.post.mockReturnValue(envio.promesa)
+  await anular()
+  await flushPromises()
+  expect(w.find('[data-test=movimientos-error]').exists()).toBe(false)
+  envio.resolve({ data: { id: 1, sentido: 'SALIDA', placa: 'CAR1', motivo: { nombre: 'Tanqueo' }, registrado_por: 'g1', registrado_at: reciente(), anulado: true } })
+  await flushPromises()
+})
