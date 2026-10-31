@@ -1,6 +1,7 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import MarcoAdmin from '@/components/MarcoAdmin.vue'
+import DetalleEvento from '@/components/DetalleEvento.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useConsultaStore } from '@/stores/consulta'
 import { useMotivosStore } from '@/stores/motivos'
@@ -14,7 +15,8 @@ const { cargando, error: errorBusqueda, ejecutar: buscar } = useCarga(() => cons
 const error = ref('')
 const descargando = ref(false)
 const cargandoMas = ref(false)
-const seleccionado = ref(null)
+const seleccionadoId = ref(null)
+const seleccionado = computed(() => consulta.items.find((e) => e.id === seleccionadoId.value) || null)
 const TIPOS = [{ valor: 'PROPIO', texto: 'Propio' }, { valor: 'PROVEEDOR_ASISTENCIA', texto: 'Proveedor de asistencias' }, { valor: 'PROVEEDOR', texto: 'Proveedor' }]
 
 onMounted(() => {
@@ -100,7 +102,7 @@ function consultar() {
       <li v-for="e in consulta.items" :key="e.id">
         <button
           type="button" class="tarjeta w-full text-left space-y-1" :class="e.anulado ? 'opacity-60' : ''"
-          data-test="consulta-fila" @click="seleccionado = e"
+          data-test="consulta-fila" @click="seleccionadoId = e.id"
         >
           <span class="flex flex-wrap items-center justify-between gap-2">
             <span class="font-bold">{{ fechaHora(e.registrado_at) }} · {{ e.sentido === 'INGRESO' ? 'Ingreso' : 'Salida' }} · <span class="tracking-wider">{{ e.placa }}</span></span>
@@ -115,5 +117,6 @@ function consultar() {
       v-if="consulta.total > consulta.items.length && !consulta.sinMas" type="button" class="btn-secundario w-full mt-3"
       :disabled="cargandoMas || cargando" data-test="consulta-mas" @click="cargarMas"
     >{{ cargandoMas ? 'Cargando…' : 'Cargar más' }}</button>
+    <DetalleEvento v-if="seleccionado" :evento="seleccionado" @cerrar="seleccionadoId = null" />
   </MarcoAdmin>
 </template>

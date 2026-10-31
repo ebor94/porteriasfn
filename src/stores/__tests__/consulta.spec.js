@@ -1,7 +1,7 @@
 import { test, expect, beforeEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 
-vi.mock('@/services/api', () => ({ porteria: { get: vi.fn() } }))
+vi.mock('@/services/api', () => ({ porteria: { get: vi.fn(), post: vi.fn(), patch: vi.fn() } }))
 const guardarArchivo = vi.hoisted(() => vi.fn())
 vi.mock('@/services/archivos', async (original) => ({ ...(await original()), guardarArchivo }))
 
@@ -102,4 +102,19 @@ test('sinMas: una página sin filas nuevas marca el final y buscar lo reinicia',
   expect(c.sinMas).toBe(true)
   await c.buscar()
   expect(c.sinMas).toBe(false)
+})
+
+test('corregir, anular y recargar reemplazan la fila', async () => {
+  const c = useConsultaStore()
+  c.items = [{ id: 1, kilometraje: 1 }, { id: 2 }]
+  porteria.patch.mockResolvedValue({ data: { id: 1, kilometraje: 5 } })
+  porteria.post.mockResolvedValue({ data: { id: 2, anulado: true } })
+  porteria.get.mockResolvedValue({ data: { id: 1, kilometraje: 6 } })
+  await c.corregir(1, { kilometraje: 5 })
+  expect(porteria.patch).toHaveBeenCalledWith('/eventos/1', { kilometraje: 5 })
+  await c.anular(2, 'Duplicado')
+  expect(porteria.post).toHaveBeenCalledWith('/eventos/2/anular', { motivo: 'Duplicado' })
+  expect(await c.recargar(1)).toEqual({ id: 1, kilometraje: 6 })
+  expect(porteria.get).toHaveBeenCalledWith('/eventos/1')
+  expect(c.items).toEqual([{ id: 1, kilometraje: 6 }, { id: 2, anulado: true }])
 })

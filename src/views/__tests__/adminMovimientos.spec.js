@@ -107,3 +107,11 @@ test('"Cargar más" queda deshabilitado mientras se busca', async () => {
   await flushPromises()
   expect(w.get('[data-test=consulta-mas]').attributes('disabled')).toBeUndefined()
 })
+
+test('tocar una fila abre el detalle', async () => {
+  const w = montar()
+  await flushPromises()
+  expect(w.find('detalle-evento-stub').exists()).toBe(false)
+  await w.findAll('[data-test=consulta-fila]')[0].trigger('click')
+  expect(w.find('detalle-evento-stub').exists()).toBe(true)
+})

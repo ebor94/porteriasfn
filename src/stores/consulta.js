@@ -61,6 +61,21 @@ export const useConsultaStore = defineStore('consulta', {
       const blob = await porteria.get('/admin/reportes/movimientos.xlsx', { params, responseType: 'blob', timeout: TIEMPO_EXCEL })
       guardarArchivo(blob, nombreReporte(params))
     },
+    async corregir(id, cambios) {
+      const { data } = await porteria.patch(`/eventos/${id}`, cambios)
+      this.reemplazar(data)
+      return data
+    },
+    async anular(id, motivo) {
+      const { data } = await porteria.post(`/eventos/${id}/anular`, { motivo })
+      this.reemplazar(data)
+      return data
+    },
+    async recargar(id) {
+      const { data } = await porteria.get(`/eventos/${id}`)
+      this.reemplazar(data)
+      return data
+    },
     reemplazar(evento) {
       const i = this.items.findIndex((e) => e.id === evento.id)
       if (i >= 0) this.items.splice(i, 1, evento)
