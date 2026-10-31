@@ -70,7 +70,7 @@ watch(() => estado.placa, (valor) => {
   }, 300)
 }, { flush: 'sync' })
 
-onBeforeUnmount(() => clearTimeout(temporizadorProveedores))
+onBeforeUnmount(descartarProveedores)
 
 function usarProveedor(v) {
   estado.placa = v.placa
@@ -130,12 +130,16 @@ async function consultarPlaca() {
     // Solo el sentido fijado se conserva; el sugerido se renueva con la nueva placa.
     const sentido = estado.sentidoFijado ? estado.sentido : null
     Object.assign(estado, estadoInicial(sentido), { placa })
+    // Asignar la placa arma el autocompletar; mientras dura la consulta no debe ofrecer nada.
+    descartarProveedores()
     const sugerencia = await estadoStore.sugerir(placa)
     if (numero !== peticionPlaca) return
     aplicarSugerencia(estado, sugerencia)
     descartarProveedores()
   } catch (e) {
-    if (numero === peticionPlaca) error.value = e.message
+    if (numero !== peticionPlaca) return
+    descartarProveedores()
+    error.value = e.message
   }
 }
 

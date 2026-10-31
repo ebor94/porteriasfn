@@ -477,6 +477,77 @@ test('si el catálogo falla, no estorba', async () => {
   await w.get('[data-test=registro-placa]').setValue('abc')
   await vi.advanceTimersByTimeAsync(300)
   await flushPromises()
+  expect(porteria.get).toHaveBeenCalledWith('/vehiculos-externos', { params: { q: 'ABC' } })
   expect(w.find('[data-test=registro-proveedor]').exists()).toBe(false)
   expect(w.find('[data-test=registro-error]').exists()).toBe(false)
+})
+
+const EXTERNOS = [{ id: 4, placa: 'XYZ123', tipo: 'PROVEEDOR', empresa: 'Flores del Norte' }]
+
+test('mientras la consulta de la placa está pendiente no aparecen sugerencias, ni después', async () => {
+  const consulta = diferido()
+  porteria.get.mockImplementation(async (url) => {
+    if (url === '/vehiculos-externos') return { data: EXTERNOS }
+    if (url.startsWith('/estado/placa/')) return consulta.promesa
+    return { data: [] }
+  })
+  const { w } = await montar()
+  await w.get('[data-test=registro-placa]').setValue('abc123')
+  await w.get('[data-test=registro-consultar]').trigger('click')
+  await vi.advanceTimersByTimeAsync(400)
+  await flushPromises()
+  expect(w.find('[data-test=registro-proveedor]').exists()).toBe(false)
+  consulta.resolve({ data: SUGERENCIA })
+  await flushPromises()
+  await vi.advanceTimersByTimeAsync(400)
+  await flushPromises()
+  expect(w.find('[data-test=registro-proveedor]').exists()).toBe(false)
+})
+
+test('si la consulta de la placa falla no queda una lista de sugerencias junto al error', async () => {
+  const consulta = diferido()
+  porteria.get.mockImplementation(async (url) => {
+    if (url === '/vehiculos-externos') return { data: EXTERNOS }
+    if (url.startsWith('/estado/placa/')) return consulta.promesa
+    return { data: [] }
+  })
+  const { w } = await montar()
+  await w.get('[data-test=registro-placa]').setValue('abc123')
+  await w.get('[data-test=registro-consultar]').trigger('click')
+  await vi.advanceTimersByTimeAsync(400)
+  consulta.reject({ status: 500, message: 'Fallo del servidor' })
+  await flushPromises()
+  await vi.advanceTimersByTimeAsync(400)
+  await flushPromises()
+  expect(w.get('[data-test=registro-error]').text()).toBe('Fallo del servidor')
+  expect(w.find('[data-test=registro-proveedor]').exists()).toBe(false)
+})
+
+test('editar la placa después de una consulta vuelve a habilitar el autocompletar', async () => {
+  porteria.get.mockImplementation(async (url) => {
+    if (url === '/vehiculos-externos') return { data: EXTERNOS }
+    if (url.startsWith('/estado/placa/')) return { data: SUGERENCIA }
+    return { data: [] }
+  })
+  const { w } = await montar()
+  await consultar(w, 'abc123')
+  await w.get('[data-test=registro-placa]').setValue('xy')
+  await vi.advanceTimersByTimeAsync(300)
+  await flushPromises()
+  expect(w.find('[data-test=registro-proveedor]').exists()).toBe(true)
+})
+
+test('la respuesta vieja del catálogo no se muestra si se siguió escribiendo', async () => {
+  const porQ = { XY: diferido(), XYZ: diferido() }
+  porteria.get.mockImplementation(async (url, opciones) => {
+    if (url === '/vehiculos-externos') return porQ[opciones.params.q].promesa
+    return { data: [] }
+  })
+  const { w } = await montar()
+  await w.get('[data-test=registro-placa]').setValue('xy')
+  await vi.advanceTimersByTimeAsync(300)
+  await w.get('[data-test=registro-placa]').setValue('xyz')
+  porQ.XY.resolve({ data: EXTERNOS })
+  await flushPromises()
+  expect(w.find('[data-test=registro-proveedor]').exists()).toBe(false)
 })
