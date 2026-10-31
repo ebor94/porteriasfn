@@ -30,7 +30,7 @@ async function reintentar() {
 <template>
   <main class="min-h-screen flex items-center justify-center p-4">
     <div class="tarjeta w-full max-w-sm space-y-4 text-center">
-      <h1 class="text-2xl font-bold text-primary-800">Sin conexión con el servidor</h1>
+      <h1 class="text-2xl font-bold text-primary-800">{{ auth.servicioNoDisponible ? 'Portería no disponible' : 'Sin conexión con el servidor' }}</h1>
       <p v-if="auth.servicioNoDisponible && !error" class="aviso-error" role="alert" data-test="sin-conexion-deshabilitada">{{ MENSAJE_DESHABILITADA }}</p>
       <p v-if="!auth.servicioNoDisponible" class="text-gray-700">No se pudo comprobar tu sesión. Revisa la red y vuelve a intentar.</p>
       <p v-if="error" class="aviso-error" role="alert" data-test="sin-conexion-error">{{ error }}</p>

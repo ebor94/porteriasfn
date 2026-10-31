@@ -71,6 +71,7 @@ test('con Portería deshabilitada muestra ese aviso en vez del de sin conexión 
   const aviso = 'Portería no está disponible en este momento. Avisa a TI.'
   expect(w.get('[role=alert]').text()).toBe(aviso)
   expect(w.text()).not.toContain('No se pudo comprobar tu sesión')
+  expect(w.get('h1').text()).toBe('Portería no disponible')
   porteria.get.mockRejectedValue({ status: 503, motivo: 'PORTERIA_DESHABILITADA', message: 'x' })
   await w.get('[data-test=sin-conexion-reintentar]').trigger('click')
   await flushPromises()
