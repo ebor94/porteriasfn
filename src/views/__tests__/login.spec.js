@@ -20,7 +20,8 @@ async function montar(query = {}) {
     history: createMemoryHistory(),
     routes: [
       { path: '/login', component: LoginView }, { path: '/sede', component: { template: '<div>sede</div>' } },
-      { path: '/inicio', component: { template: '<div />' } }, { path: '/vehiculos', component: { template: '<div />' } }
+      { path: '/inicio', component: { template: '<div />' } }, { path: '/vehiculos', component: { template: '<div />' } },
+      { path: '/admin/:resto(.*)*', component: { template: '<div />' } }
     ]
   })
   router.push({ path: '/login', query })
@@ -65,8 +66,8 @@ test('no envía sin usuario y clave', async () => {
   expect(w.get('[data-test=login-error]').text()).toBe('Escribe tu usuario y contraseña')
 })
 
-async function entrarCon(query, sede) {
-  porteria.post.mockResolvedValue({ data: { token: 't', user: { usuario: 'g1', nombre: 'G', rol: 'guarda', sede }, sedes: [] } })
+async function entrarCon(query, sede, rol = 'guarda') {
+  porteria.post.mockResolvedValue({ data: { token: 't', user: { usuario: 'g1', nombre: 'G', rol, sede }, sedes: [] } })
   const { w, router } = await montar(query)
   await w.get('[data-test=login-usuario]').setValue('g1')
   await w.get('[data-test=login-clave]').setValue('clave')
@@ -98,4 +99,9 @@ test('avisa de forma persistente si Portería está deshabilitada', async () => 
   await flushPromises()
   expect(w.get('[data-test=login-servicio]').text()).toBe('Portería no está disponible en este momento. Avisa a TI.')
   expect(w.get('[data-test=login-servicio]').attributes('role')).toBe('alert')
+})
+
+test('un admin sin sede va directo al redirect, sin pasar por elegir sede', async () => {
+  const ruta = await entrarCon({ redirect: '/admin/motivos' }, null, 'admin_porteria')
+  expect(ruta.fullPath).toBe('/admin/motivos')
 })

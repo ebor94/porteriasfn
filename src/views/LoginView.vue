@@ -26,7 +26,8 @@ async function entrar() {
     clave.value = ''
     const redirect = rutaInterna(route.query.redirect)
     if (!redirect) router.replace(auth.rutaInicio)
-    else if (auth.sede) router.replace(redirect)
+    // El admin no necesita sede para la administración; si el destino la pide, la guarda lo lleva a elegirla.
+    else if (auth.sede || auth.esAdmin) router.replace(redirect)
     else router.replace({ path: '/sede', query: { redirect } })
   } catch (e) {
     error.value = e.message || 'No se pudo entrar'

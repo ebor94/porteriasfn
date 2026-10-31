@@ -13,7 +13,7 @@ async function montar(query = {}) {
   const vacia = { template: '<div />' }
   const router = createRouter({
     history: createMemoryHistory(),
-    routes: [{ path: '/sin-conexion', component: SinConexionView }, { path: '/inicio', component: vacia }, { path: '/vehiculos', component: vacia }, { path: '/login', component: vacia }]
+    routes: [{ path: '/sin-conexion', component: SinConexionView }, { path: '/inicio', component: vacia }, { path: '/vehiculos', component: vacia }, { path: '/login', component: vacia }, { path: '/admin', component: vacia }]
   })
   router.push({ path: '/sin-conexion', query })
   await router.isReady()
@@ -77,4 +77,12 @@ test('con Portería deshabilitada muestra ese aviso en vez del de sin conexión 
   await flushPromises()
   expect(w.findAll('[role=alert]')).toHaveLength(1)
   expect(w.get('[data-test=sin-conexion-error]').text()).toBe(aviso)
+})
+
+test('sin redirect, un admin sin sede vuelve a su inicio', async () => {
+  porteria.get.mockResolvedValue({ data: { user: { usuario: 'a', rol: 'admin_porteria', sede: null } } })
+  const { w, router } = await montar()
+  await w.get('[data-test=sin-conexion-reintentar]').trigger('click')
+  await flushPromises()
+  expect(router.currentRoute.value.path).toBe('/admin')
 })

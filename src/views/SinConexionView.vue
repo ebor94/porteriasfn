@@ -17,7 +17,7 @@ async function reintentar() {
   cargando.value = true
   try {
     await auth.cargarPerfil()
-    router.replace(rutaInterna(route.query.redirect, '/inicio'))
+    router.replace(rutaInterna(route.query.redirect, auth.rutaInicio))
   } catch (e) {
     if (e && e.status === 401) router.replace({ path: '/login', query: { motivo: MOTIVO_SESION_EXPIRADA } })
     else error.value = auth.servicioNoDisponible ? MENSAJE_DESHABILITADA : 'Sigue sin conexión. Intenta de nuevo.'
