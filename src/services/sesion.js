@@ -1,5 +1,5 @@
 // Sesión vencida y cambios de sesión en otra pestaña.
-import { CLAVE_TOKEN, alSesionExpirada } from '@/services/api'
+import { CLAVE_TOKEN, alSesionExpirada, alCambiarDisponibilidad } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 
 export const MOTIVO_SESION_EXPIRADA = 'SESION_EXPIRADA'
@@ -23,5 +23,6 @@ export function manejarSesionExpirada({ auth, router }) {
 
 export function instalarSesion(router) {
   alSesionExpirada(() => manejarSesionExpirada({ auth: useAuthStore(), router }))
+  alCambiarDisponibilidad((disponible) => useAuthStore().fijarServicio(disponible))
   return vigilarTokenCompartido()
 }

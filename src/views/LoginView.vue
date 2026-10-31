@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { MOTIVO_SESION_EXPIRADA } from '@/services/sesion'
+import { rutaInterna } from '@/utils/rutas'
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -23,7 +24,10 @@ async function entrar() {
   try {
     await auth.login(usuario.value.trim(), clave.value)
     clave.value = ''
-    router.replace(auth.rutaInicio)
+    const redirect = rutaInterna(route.query.redirect)
+    if (!redirect) router.replace(auth.rutaInicio)
+    else if (auth.sede) router.replace(redirect)
+    else router.replace({ path: '/sede', query: { redirect } })
   } catch (e) {
     error.value = e.message || 'No se pudo entrar'
   } finally {
@@ -36,7 +40,10 @@ async function entrar() {
   <main class="min-h-screen flex items-center justify-center p-4">
     <form class="tarjeta w-full max-w-sm space-y-4" @submit.prevent="entrar">
       <h1 class="text-2xl font-bold text-primary-800">Portería</h1>
-      <p v-if="vencida" class="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3" data-test="login-aviso">
+      <p v-if="auth.servicioNoDisponible" class="aviso-error" role="alert" data-test="login-servicio">
+        Portería no está disponible en este momento. Avisa a TI.
+      </p>
+      <p v-if="vencida" class="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3" role="alert" data-test="login-aviso">
         Tu sesión venció. Vuelve a entrar.
       </p>
       <div>

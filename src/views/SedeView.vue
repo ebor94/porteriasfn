@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { rutaInterna } from '@/utils/rutas'
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -22,8 +23,7 @@ async function elegir(id) {
   enviando.value = true
   try {
     await auth.elegirSede(id)
-    const destino = typeof route.query.redirect === 'string' ? route.query.redirect : '/inicio'
-    router.replace(destino)
+    router.replace(rutaInterna(route.query.redirect, '/inicio'))
   } catch (e) {
     error.value = e.message
   } finally {

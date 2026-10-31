@@ -1,5 +1,8 @@
 import { test, expect, vi } from 'vitest'
-import { manejarSesionExpirada, vigilarTokenCompartido, MOTIVO_SESION_EXPIRADA } from '@/services/sesion'
+import { createPinia, setActivePinia } from 'pinia'
+import { manejarSesionExpirada, vigilarTokenCompartido, instalarSesion, MOTIVO_SESION_EXPIRADA } from '@/services/sesion'
+import { porteria, alCambiarDisponibilidad, alSesionExpirada } from '@/services/api'
+import { useAuthStore } from '@/stores/auth'
 
 function routerEn(path) {
   return { currentRoute: { value: { path, fullPath: path } }, replace: vi.fn() }
@@ -32,4 +35,26 @@ test('si otra pestaña cambia el token, recarga', () => {
   window.dispatchEvent(new StorageEvent('storage', { key: 'por_token' }))
   expect(recargar).toHaveBeenCalledTimes(1)
   dejar()
+})
+
+test('instalarSesion enlaza la disponibilidad del servicio con el store', async () => {
+  setActivePinia(createPinia())
+  const dejar = instalarSesion(routerEn('/inicio'))
+  const auth = useAuthStore()
+  const responder = (status, data) => {
+    porteria.defaults.adapter = async (config) => {
+      const respuesta = { data, status, statusText: '', headers: {}, config }
+      if (status >= 400) throw Object.assign(new Error('http'), { config, response: respuesta, isAxiosError: true })
+      return respuesta
+    }
+  }
+  responder(503, { success: false, motivo: 'PORTERIA_DESHABILITADO', message: 'Deshabilitado' })
+  await expect(porteria.get('/estado/dentro')).rejects.toMatchObject({ status: 503 })
+  expect(auth.servicioNoDisponible).toBe(true)
+  responder(200, { success: true, data: [] })
+  await porteria.get('/estado/dentro')
+  expect(auth.servicioNoDisponible).toBe(false)
+  dejar()
+  alSesionExpirada(null)
+  alCambiarDisponibilidad(null)
 })

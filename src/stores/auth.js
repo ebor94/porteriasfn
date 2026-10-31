@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { porteria, tokenStorage } from '@/services/api'
 
 export const useAuthStore = defineStore('auth', {
-  state: () => ({ token: tokenStorage.leer(), usuario: null, sedes: [] }),
+  state: () => ({ token: tokenStorage.leer(), usuario: null, sedes: [], servicioNoDisponible: false }),
   getters: {
     autenticado: (s) => Boolean(s.token && s.usuario),
     esAdmin: (s) => Boolean(s.usuario && s.usuario.rol === 'admin_porteria'),
@@ -14,6 +14,9 @@ export const useAuthStore = defineStore('auth', {
       this.token = token
       this.usuario = usuario
       tokenStorage.guardar(token)
+    },
+    fijarServicio(disponible) {
+      this.servicioNoDisponible = !disponible
     },
     async login(usuario, password) {
       const { data } = await porteria.post('/auth/login', { usuario, password })

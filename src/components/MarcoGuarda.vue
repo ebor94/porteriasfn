@@ -32,6 +32,9 @@ function salir() {
         <RouterLink to="/movimientos" class="btn bg-primary-800 text-white text-base" active-class="ring-2 ring-white">Movimientos</RouterLink>
       </nav>
     </header>
+    <p v-if="auth.servicioNoDisponible" class="bg-red-700 text-white px-4 py-2 text-center font-semibold" role="alert" data-test="marco-servicio">
+      Portería no está disponible en este momento. Avisa a TI.
+    </p>
     <main class="flex-1 p-4 max-w-3xl w-full mx-auto">
       <h1 v-if="titulo" class="text-2xl font-bold mb-4">{{ titulo }}</h1>
       <slot />

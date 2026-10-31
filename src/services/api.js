@@ -14,15 +14,24 @@ export const tokenStorage = {
   }
 }
 
+const SIN_RESPUESTA = [502, 503, 504]
+
 // Contrato de error del backend → objeto plano para la UI.
 export function normalizarError(error) {
   const r = error && error.response
+  if (!r) return { status: 0, codigo: null, motivo: 'SIN_CONEXION', message: 'Sin conexión con el servidor', errors: [] }
+  const d = r.data
+  const cuerpo = d !== null && typeof d === 'object' ? d : null
+  // Un proxy caído o una página HTML de error no traen el contrato: se trata como servidor que no responde.
+  if (!cuerpo || (!cuerpo.motivo && SIN_RESPUESTA.includes(r.status))) {
+    return { status: r.status, codigo: null, motivo: 'SIN_CONEXION', message: 'El servidor no responde. Intenta de nuevo.', errors: [] }
+  }
   return {
-    status: r ? r.status : 0,
-    codigo: r && r.data ? r.data.error || null : null,
-    motivo: r ? (r.data && r.data.motivo) || 'ERROR' : 'SIN_CONEXION',
-    message: r ? (r.data && r.data.message) || 'Ocurrió un error' : 'Sin conexión con el servidor',
-    errors: (r && r.data && r.data.errors) || []
+    status: r.status,
+    codigo: cuerpo.error || null,
+    motivo: cuerpo.motivo || 'ERROR',
+    message: cuerpo.message || 'Ocurrió un error',
+    errors: cuerpo.errors || []
   }
 }
 
@@ -30,6 +39,12 @@ let alExpirar = null
 export function alSesionExpirada(fn) {
   alExpirar = fn
 }
+// Avisa si el servicio está disponible (true) o Portería está deshabilitada en el servidor (false).
+let alDisponibilidad = null
+export function alCambiarDisponibilidad(fn) {
+  alDisponibilidad = fn
+}
+
 // Un 401 del login significa credenciales malas, no sesión vencida.
 const esLogin = (url = '') => /^\/?auth\/login/.test(url)
 
@@ -49,9 +64,13 @@ function crearCliente(baseURL) {
     return config
   })
   cliente.interceptors.response.use(
-    (r) => r.data,
+    (r) => {
+      if (alDisponibilidad) alDisponibilidad(true)
+      return r.data
+    },
     (e) => {
       const err = normalizarError(e)
+      if (err.status === 503 && err.motivo === 'PORTERIA_DESHABILITADO' && alDisponibilidad) alDisponibilidad(false)
       avisarSiExpiro(e, err)
       return Promise.reject(err)
     }

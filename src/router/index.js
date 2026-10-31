@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/auth'
 export const routes = [
   { path: '/', redirect: '/inicio' },
   { path: '/login', component: () => import('@/views/LoginView.vue'), meta: { publica: true } },
+  { path: '/sin-conexion', component: () => import('@/views/SinConexionView.vue'), meta: { publica: true } },
   { path: '/sede', component: () => import('@/views/SedeView.vue') },
   { path: '/inicio', component: () => import('@/views/InicioView.vue'), meta: { requiereSede: true } },
   { path: '/registrar/:sentido?', component: () => import('@/views/RegistroView.vue'), meta: { requiereSede: true } },
@@ -25,8 +26,12 @@ export async function guardia(to, auth) {
       await auth.cargarPerfil()
     } catch (e) {
       // 401: cargarPerfil ya cerró sesión; se avisa en /login que la sesión venció.
-      if (e && e.status === 401 && !(to.meta && to.meta.publica)) {
-        return { path: '/login', query: { redirect: to.fullPath, motivo: 'SESION_EXPIRADA' } }
+      const publica = Boolean(to.meta && to.meta.publica)
+      if (e && e.status === 401) {
+        if (!publica) return { path: '/login', query: { redirect: to.fullPath, motivo: 'SESION_EXPIRADA' } }
+      } else if (!publica) {
+        // Sin red o servidor caído: la sesión sigue vigente, se espera en una pantalla donde reintentar.
+        return { path: '/sin-conexion', query: { redirect: to.fullPath } }
       }
     }
   }
