@@ -1,6 +1,6 @@
 // src/registro/__tests__/modelo.spec.js
 import { test, expect, describe } from 'vitest'
-import { estadoInicial, aplicarSugerencia, pasosPara, validarPaso, construirCuerpo, detalleInconsistencia } from '@/registro/modelo'
+import { estadoInicial, aplicarSugerencia, elegirMotivo, pasosPara, validarPaso, construirCuerpo, detalleInconsistencia } from '@/registro/modelo'
 
 const NINGUNA = { id: 1, tipo_referencia: 'NINGUNA', referencia_obligatoria: false }
 const ASIST = { id: 2, tipo_referencia: 'ASISTENCIA', referencia_obligatoria: true }
@@ -35,6 +35,27 @@ describe('aplicarSugerencia', () => {
     expect(e.motivoId).toBeNull()
   })
 
+  test('sentido fijado solo si viene del parámetro o del guarda', () => {
+    expect(estadoInicial().sentidoFijado).toBe(false)
+    expect(estadoInicial('SALIDA').sentidoFijado).toBe(true)
+  })
+
+  test('sentido sugerido (no fijado) se renueva con cada placa y trae su propuesta', () => {
+    const e = estadoInicial()
+    aplicarSugerencia(e, propio({ sentido_sugerido: 'SALIDA', propuesta: null }))
+    expect(e.sentido).toBe('SALIDA')
+    expect(e.sentidoFijado).toBe(false)
+    aplicarSugerencia(e, propio({ placa: 'XYZ987' }))
+    expect(e).toMatchObject({ sentido: 'INGRESO', motivoId: 2 })
+  })
+
+  test('el sentido fijado no cambia con la sugerencia', () => {
+    const e = estadoInicial('SALIDA')
+    aplicarSugerencia(e, propio())
+    aplicarSugerencia(e, propio({ sentido_sugerido: 'INGRESO' }))
+    expect(e.sentido).toBe('SALIDA')
+  })
+
   test('propuesta con conductor "otro"', () => {
     const e = estadoInicial()
     aplicarSugerencia(e, propio({ propuesta: { ...propio().propuesta, conductor_usuario: null, conductor_nombre: 'Pedro', conductor_otro: true } }))
@@ -58,6 +79,30 @@ describe('aplicarSugerencia', () => {
     const e = estadoInicial()
     aplicarSugerencia(e, { placa: 'NEW1', tipo_vehiculo: null, vehiculo: null, vehiculo_externo: null, estado: null, sentido_sugerido: 'INGRESO', propuesta: null })
     expect(e).toMatchObject({ tipo: null, tipoConocido: false, sentido: 'INGRESO', empresa: '' })
+  })
+})
+
+describe('elegirMotivo', () => {
+  const conReferencia = () => ({ ...estadoInicial(), motivoId: 2, referencia: { asistenciaId: 50, exequiaId: 7, texto: 'x', etiqueta: 'H360-1 · María' } })
+
+  test('un motivo distinto limpia la referencia', () => {
+    const e = conReferencia()
+    elegirMotivo(e, 3)
+    expect(e.motivoId).toBe(3)
+    expect(e.referencia).toEqual({ asistenciaId: null, exequiaId: null, texto: '', etiqueta: '' })
+  })
+
+  test('limpiar el motivo también limpia la referencia', () => {
+    const e = conReferencia()
+    elegirMotivo(e, null)
+    expect(e.motivoId).toBeNull()
+    expect(e.referencia.asistenciaId).toBeNull()
+  })
+
+  test('el mismo motivo conserva la referencia', () => {
+    const e = conReferencia()
+    elegirMotivo(e, 2)
+    expect(e.referencia.asistenciaId).toBe(50)
   })
 })
 

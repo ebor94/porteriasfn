@@ -2,7 +2,8 @@
 import { test, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { createRouter, createMemoryHistory } from 'vue-router'
+import { createRouter, createMemoryHistory, RouterView } from 'vue-router'
+import { h } from 'vue'
 
 vi.mock('@/services/api', () => ({
   porteria: { get: vi.fn(), post: vi.fn() },
@@ -31,14 +32,16 @@ function apiSimulada() {
   })
 }
 
-async function montar() {
+// Se monta dentro de RouterView para que onBeforeRouteLeave tenga la ruta activa.
+async function montar(ruta = '/registrar') {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [{ path: '/registrar/:sentido?', component: RegistroView }, { path: '/inicio', component: { template: '<div />' } }]
   })
-  router.push('/registrar')
+  router.push('/inicio')
+  await router.push(ruta)
   await router.isReady()
-  const w = mount(RegistroView, { global: { plugins: [router], stubs: { MarcoGuarda: { template: '<div><slot /></div>' } } } })
+  const w = mount({ render: () => h(RouterView) }, { global: { plugins: [router], stubs: { MarcoGuarda: { template: '<div><slot /></div>' } } } })
   await flushPromises()
   return { w, router }
 }
@@ -54,6 +57,8 @@ beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true })
   setActivePinia(createPinia())
   vi.clearAllMocks()
+  porteria.get.mockReset()
+  porteria.post.mockReset()
   useAuthStore().usuario = { usuario: 'g1', nombre: 'G', rol: 'guarda', sede: { id: 1, nombre: 'Norte' } }
   apiSimulada()
 })
@@ -78,7 +83,7 @@ async function llenarHastaConfirmar(w) {
 }
 
 test('registra la salida de un propio con los pasos que aplican', async () => {
-  porteria.post.mockResolvedValue({ data: { id: 1, sentido: 'SALIDA', placa: 'ABC123' } })
+  porteria.post.mockResolvedValueOnce({ data: { id: 1, sentido: 'SALIDA', placa: 'ABC123' } })
   const { w, router } = await montar()
   await llenarHastaConfirmar(w)
   await avanzar(w)
@@ -113,7 +118,7 @@ test('un paso incompleto muestra el error y no avanza', async () => {
 })
 
 test('otros errores del servidor se muestran sin diálogo', async () => {
-  porteria.post.mockRejectedValue({ status: 409, motivo: 'OCUPADO', message: 'Otro registro de esta placa está en curso. Intenta de nuevo.', errors: [] })
+  porteria.post.mockRejectedValueOnce({ status: 409, motivo: 'OCUPADO', message: 'Otro registro de esta placa está en curso. Intenta de nuevo.', errors: [] })
   const { w } = await montar()
   await llenarHastaConfirmar(w)
   await avanzar(w)
@@ -247,7 +252,7 @@ test('la respuesta de una consulta de placa vieja se descarta', async () => {
 })
 
 test('sin conexión al registrar avisa que se revisen los movimientos', async () => {
-  porteria.post.mockRejectedValue({ motivo: 'SIN_CONEXION', message: 'Sin red' })
+  porteria.post.mockRejectedValueOnce({ motivo: 'SIN_CONEXION', message: 'Sin red' })
   const { w } = await montar()
   await llenarHastaConfirmar(w)
   await avanzar(w)
@@ -270,4 +275,98 @@ test('la referencia solo aparece al confirmar si el motivo la pide', async () =>
   const { w } = await montar()
   await llenarHastaConfirmar(w)
   expect(w.get('[data-test=paso-confirmar]').text()).not.toContain('Referencia')
+})
+
+const sentidoActivo = (w) => ['INGRESO', 'SALIDA'].find((s) => w.get(`[data-test=registro-sentido-${s}]`).attributes('aria-pressed') === 'true')
+
+function conSugerencias(porPlaca) {
+  const base = porteria.get.getMockImplementation()
+  porteria.get.mockImplementation(async (url, cfg) => {
+    const placa = url.startsWith('/estado/placa/') ? url.split('/').pop() : null
+    return placa ? { data: porPlaca[placa] } : base(url, cfg)
+  })
+}
+
+test('el sentido sugerido de una placa no se arrastra a la siguiente', async () => {
+  conSugerencias({
+    ABC123: SUGERENCIA,
+    XYZ987: { ...SUGERENCIA, placa: 'XYZ987', sentido_sugerido: 'INGRESO', propuesta: { motivo: { id: 6 } } }
+  })
+  const { w } = await montar()
+  await consultar(w, 'abc123')
+  expect(sentidoActivo(w)).toBe('SALIDA')
+  await consultar(w, 'xyz987')
+  expect(sentidoActivo(w)).toBe('INGRESO')
+  await avanzar(w)
+  await vi.advanceTimersByTimeAsync(300)
+  await flushPromises()
+  await w.get('[data-test=buscable-item]').trigger('click')
+  await avanzar(w)
+  expect(w.get('[data-test=registro-motivo-6]').attributes('aria-pressed')).toBe('true')
+})
+
+test('el sentido que tocó el guarda o vino en la ruta se conserva al cambiar de placa', async () => {
+  conSugerencias({ ABC123: SUGERENCIA, XYZ987: { ...SUGERENCIA, placa: 'XYZ987', sentido_sugerido: 'INGRESO' } })
+  const tocado = await montar()
+  await consultar(tocado.w, 'xyz987')
+  await tocado.w.get('[data-test=registro-sentido-SALIDA]').trigger('click')
+  await consultar(tocado.w, 'abc123')
+  expect(sentidoActivo(tocado.w)).toBe('SALIDA')
+  await consultar(tocado.w, 'xyz987')
+  expect(sentidoActivo(tocado.w)).toBe('SALIDA')
+
+  const deRuta = await montar('/registrar/INGRESO')
+  await consultar(deRuta.w, 'abc123')
+  expect(sentidoActivo(deRuta.w)).toBe('INGRESO')
+})
+
+test('si el motivo cargó vacío avisa que no hay motivos', async () => {
+  const base = porteria.get.getMockImplementation()
+  porteria.get.mockImplementation(async (url, cfg) => (url === '/catalogos/motivos' ? { data: [] } : base(url, cfg)))
+  const { w } = await montar()
+  await consultar(w)
+  await hastaMotivo(w)
+  expect(w.get('[data-test=registro-sin-motivos]').text()).toBe('No hay motivos para este vehículo y sentido. Avisa al administrador.')
+})
+
+test('el atrás del sistema retrocede un paso del asistente en vez de salir', async () => {
+  const { w, router } = await montar()
+  await consultar(w)
+  await avanzar(w)
+  expect(w.find('[data-test=paso-conductor]').exists()).toBe(true)
+  await router.push('/inicio').catch(() => {})
+  await flushPromises()
+  expect(router.currentRoute.value.path).toBe('/registrar')
+  expect(w.find('[data-test=paso-placa]').exists()).toBe(true)
+})
+
+test('en el primer paso con placa escrita pide confirmar la salida', async () => {
+  const confirmar = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true)
+  const { w, router } = await montar()
+  await w.get('[data-test=registro-placa]').setValue('abc123')
+  await router.push('/inicio')
+  await flushPromises()
+  expect(confirmar).toHaveBeenCalledWith('¿Salir sin registrar?')
+  expect(router.currentRoute.value.path).toBe('/registrar')
+  await router.push('/inicio')
+  await flushPromises()
+  expect(router.currentRoute.value.path).toBe('/inicio')
+  confirmar.mockRestore()
+})
+
+test('sin placa escrita sale sin preguntar y tras registrar no se bloquea la ida al inicio', async () => {
+  const confirmar = vi.spyOn(window, 'confirm')
+  const vacio = await montar()
+  await vacio.router.push('/inicio')
+  await flushPromises()
+  expect(vacio.router.currentRoute.value.path).toBe('/inicio')
+  expect(confirmar).not.toHaveBeenCalled()
+
+  porteria.post.mockResolvedValueOnce({ data: { id: 1, sentido: 'SALIDA', placa: 'ABC123' } })
+  const { w, router } = await montar()
+  await llenarHastaConfirmar(w)
+  await avanzar(w)
+  expect(router.currentRoute.value.path).toBe('/inicio')
+  expect(confirmar).not.toHaveBeenCalled()
+  confirmar.mockRestore()
 })

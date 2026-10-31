@@ -8,6 +8,8 @@ export const PASOS = ['placa', 'tipo', 'conductor', 'motivo', 'referencia', 'det
 export function estadoInicial(sentido = null) {
   return {
     sentido,
+    // Fijado: viene de la ruta o lo tocó el guarda. Si no, es el sugerido de cada placa consultada.
+    sentidoFijado: Boolean(sentido),
     placa: '',
     sugerencia: null,
     tipo: null,
@@ -29,7 +31,7 @@ export function aplicarSugerencia(estado, s) {
   estado.placa = s.placa
   estado.tipo = s.tipo_vehiculo
   estado.tipoConocido = Boolean(s.tipo_vehiculo)
-  if (!estado.sentido) estado.sentido = s.sentido_sugerido
+  if (!estado.sentidoFijado) estado.sentido = s.sentido_sugerido
   if (s.vehiculo_externo) estado.empresa = s.vehiculo_externo.empresa || ''
 
   const p = s.propuesta
@@ -49,6 +51,12 @@ export function aplicarSugerencia(estado, s) {
     if (p.empresa) estado.empresa = p.empresa
     estado.conductor = { modo: 'ad', usuario: null, nombre: p.conductor_nombre || '', documento: p.conductor_documento || '' }
   }
+}
+
+// Cambiar de motivo (o quedarse sin él) invalida la referencia elegida para el anterior.
+export function elegirMotivo(estado, id) {
+  if (estado.motivoId !== id) estado.referencia = { asistenciaId: null, exequiaId: null, texto: '', etiqueta: '' }
+  estado.motivoId = id
 }
 
 const pideReferencia = (motivo) => Boolean(motivo && motivo.tipo_referencia && motivo.tipo_referencia !== 'NINGUNA')

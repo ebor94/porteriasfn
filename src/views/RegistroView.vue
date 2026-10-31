@@ -1,6 +1,6 @@
 <script setup>
 import { reactive, ref, computed, watch, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import MarcoGuarda from '@/components/MarcoGuarda.vue'
 import ListaBuscable from '@/components/ListaBuscable.vue'
@@ -10,7 +10,7 @@ import { useCatalogosStore } from '@/stores/catalogos'
 import { useEstadoStore } from '@/stores/estado'
 import { useEventosStore } from '@/stores/eventos'
 import { normalizarPlaca } from '@/utils/placa'
-import { estadoInicial, aplicarSugerencia, pasosPara, validarPaso, construirCuerpo, detalleInconsistencia } from '@/registro/modelo'
+import { estadoInicial, aplicarSugerencia, elegirMotivo, pasosPara, validarPaso, construirCuerpo, detalleInconsistencia } from '@/registro/modelo'
 
 const route = useRoute()
 const router = useRouter()
@@ -25,6 +25,7 @@ const estado = reactive(estadoInicial(sentidoInicial))
 const indice = ref(0)
 const error = ref('')
 const enviando = ref(false)
+let registrado = false
 const motivos = ref([])
 const inconsistencia = ref(null)
 
@@ -35,6 +36,7 @@ const esPropio = computed(() => estado.tipo === 'PROPIO')
 const TIPOS = [{ valor: 'PROVEEDOR', texto: 'Proveedor' }, { valor: 'PROVEEDOR_ASISTENCIA', texto: 'Proveedor de asistencias' }]
 
 const motivosError = ref('')
+const motivosListos = ref(false)
 const errorVisible = computed(() => error.value || (paso.value === 'motivo' ? motivosError.value : ''))
 let peticionMotivos = 0
 let peticionPlaca = 0
@@ -43,6 +45,7 @@ async function cargarMotivos() {
   const numero = ++peticionMotivos
   const { tipo, sentido } = estado
   motivosError.value = ''
+  motivosListos.value = false
   if (!tipo || !sentido) {
     motivos.value = []
     return
@@ -51,9 +54,10 @@ async function cargarMotivos() {
     const lista = await catalogos.motivos(tipo, sentido)
     if (numero !== peticionMotivos) return
     motivos.value = lista
+    motivosListos.value = true
     if (error.value && error.value === motivosError.value) error.value = ''
     // El motivo propuesto por la salida abierta puede no aplicar al nuevo sentido.
-    if (estado.motivoId && !lista.some((m) => m.id === estado.motivoId)) estado.motivoId = null
+    if (estado.motivoId && !lista.some((m) => m.id === estado.motivoId)) elegirMotivo(estado, null)
   } catch (e) {
     if (numero !== peticionMotivos) return
     motivos.value = []
@@ -86,7 +90,8 @@ async function consultarPlaca() {
   }
   const numero = ++peticionPlaca
   try {
-    const sentido = estado.sentido
+    // Solo el sentido fijado se conserva; el sugerido se renueva con la nueva placa.
+    const sentido = estado.sentidoFijado ? estado.sentido : null
     Object.assign(estado, estadoInicial(sentido), { placa })
     const sugerencia = await estadoStore.sugerir(placa)
     if (numero !== peticionPlaca) return
@@ -94,6 +99,11 @@ async function consultarPlaca() {
   } catch (e) {
     if (numero === peticionPlaca) error.value = e.message
   }
+}
+
+function fijarSentido(s) {
+  estado.sentido = s
+  estado.sentidoFijado = true
 }
 
 function siguiente() {
@@ -119,6 +129,7 @@ async function enviar(forzar) {
   try {
     const ev = await eventos.registrar(construirCuerpo(estado, motivo.value, { forzar }))
     toast.success(`${ev.sentido === 'INGRESO' ? 'Ingreso' : 'Salida'} de ${ev.placa} ${ev.sentido === 'INGRESO' ? 'registrado' : 'registrada'}`)
+    registrado = true
     router.replace('/inicio')
   } catch (e) {
     if (e.status === 409 && e.motivo === 'SENTIDO_INCOHERENTE') {
@@ -132,6 +143,18 @@ async function enviar(forzar) {
     enviando.value = false
   }
 }
+
+// El "atrás" del sistema retrocede un paso del asistente; en el primero, confirma antes de perder la placa.
+onBeforeRouteLeave(() => {
+  if (registrado || !auth.token) return true
+  if (enviando.value) return false
+  if (indice.value > 0) {
+    error.value = ''
+    indice.value -= 1
+    return false
+  }
+  return !normalizarPlaca(estado.placa) || window.confirm('¿Salir sin registrar?')
+})
 
 function registrarIgual(observacion) {
   estado.observaciones = observacion
@@ -183,7 +206,7 @@ const etiquetaExequia = (x) => `${x.es_de_la_placa ? '★ ' : ''}${x.tipo || 'Ex
             <button
               v-for="s in ['INGRESO', 'SALIDA']" :key="s" type="button" class="btn border-2"
               :class="estado.sentido === s ? 'bg-primary-700 text-white border-primary-700' : 'bg-white border-gray-300'"
-              :data-test="`registro-sentido-${s}`" @click="estado.sentido = s"
+              :aria-pressed="String(estado.sentido === s)" :data-test="`registro-sentido-${s}`" @click="fijarSentido(s)"
             >{{ s === 'INGRESO' ? 'Ingreso' : 'Salida' }}</button>
           </div>
         </div>
@@ -194,7 +217,7 @@ const etiquetaExequia = (x) => `${x.es_de_la_placa ? '★ ' : ''}${x.tipo || 'Ex
         <button
           v-for="t in TIPOS" :key="t.valor" type="button" class="btn btn-grande w-full border-2"
           :class="estado.tipo === t.valor ? 'bg-primary-700 text-white border-primary-700' : 'bg-white border-gray-300'"
-          :data-test="`registro-tipo-${t.valor}`" @click="estado.tipo = t.valor"
+          :aria-pressed="String(estado.tipo === t.valor)" :data-test="`registro-tipo-${t.valor}`" @click="estado.tipo = t.valor"
         >{{ t.texto }}</button>
       </section>
 
@@ -229,8 +252,9 @@ const etiquetaExequia = (x) => `${x.es_de_la_placa ? '★ ' : ''}${x.tipo || 'Ex
         <button
           v-for="m in motivos" :key="m.id" type="button" class="btn w-full justify-start border-2"
           :class="estado.motivoId === m.id ? 'bg-primary-700 text-white border-primary-700' : 'bg-white border-gray-300'"
-          :data-test="`registro-motivo-${m.id}`" @click="estado.motivoId = m.id"
+          :aria-pressed="String(estado.motivoId === m.id)" :data-test="`registro-motivo-${m.id}`" @click="elegirMotivo(estado, m.id)"
         >{{ m.nombre }}</button>
+        <p v-if="motivosListos && !motivos.length" class="tarjeta" data-test="registro-sin-motivos">No hay motivos para este vehículo y sentido. Avisa al administrador.</p>
         <button v-if="motivosError" type="button" class="btn-secundario w-full" data-test="registro-motivos-reintentar" @click="cargarMotivos">Reintentar</button>
       </section>
 
@@ -277,7 +301,7 @@ const etiquetaExequia = (x) => `${x.es_de_la_placa ? '★ ' : ''}${x.tipo || 'Ex
         <p v-if="estado.observaciones">Observaciones: {{ estado.observaciones }}</p>
       </section>
 
-      <p v-if="errorVisible" class="aviso-error" data-test="registro-error">{{ errorVisible }}</p>
+      <p v-if="errorVisible" class="aviso-error" role="alert" data-test="registro-error">{{ errorVisible }}</p>
 
       <div class="grid grid-cols-2 gap-3 pt-2">
         <button type="button" class="btn-secundario" data-test="registro-atras" :disabled="enviando" @click="atras">Atrás</button>
