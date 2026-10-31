@@ -5,6 +5,7 @@ import { useCatalogosStore } from '@/stores/catalogos'
 import { useEstadoStore } from '@/stores/estado'
 import { useEventosStore } from '@/stores/eventos'
 import { useMotivosStore } from '@/stores/motivos'
+import { useProveedoresStore } from '@/stores/proveedores'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({ token: tokenStorage.leer(), usuario: null, sedes: [], servicioNoDisponible: false }),
@@ -61,6 +62,7 @@ export const useAuthStore = defineStore('auth', {
       useEventosStore().$reset()
       useCatalogosStore().limpiar()
       useMotivosStore().$reset()
+      useProveedoresStore().$reset()
     }
   }
 })

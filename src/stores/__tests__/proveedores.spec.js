@@ -1,0 +1,33 @@
+import { test, expect, beforeEach, vi } from 'vitest'
+import { setActivePinia, createPinia } from 'pinia'
+
+vi.mock('@/services/api', () => ({ porteria: { get: vi.fn(), post: vi.fn(), patch: vi.fn() } }))
+
+import { porteria } from '@/services/api'
+import { useProveedoresStore } from '@/stores/proveedores'
+import { useCatalogosStore } from '@/stores/catalogos'
+
+beforeEach(() => {
+  setActivePinia(createPinia())
+  vi.clearAllMocks()
+})
+
+test('busca con inactivos, crea al inicio de la lista y reemplaza al editar', async () => {
+  const p = useProveedoresStore()
+  porteria.get.mockResolvedValue({ data: [{ id: 1, placa: 'AAA111', activo: false }] })
+  await p.buscar('aaa')
+  expect(porteria.get).toHaveBeenCalledWith('/vehiculos-externos', { params: { q: 'aaa', incluir_inactivos: '1' } })
+  await p.buscar('')
+  expect(porteria.get).toHaveBeenLastCalledWith('/vehiculos-externos', { params: { incluir_inactivos: '1' } })
+
+  porteria.post.mockResolvedValue({ data: { id: 2, placa: 'BBB222', activo: true } })
+  await p.crear({ placa: 'bbb222', tipo: 'PROVEEDOR', empresa: 'X', descripcion: null })
+  expect(porteria.post).toHaveBeenCalledWith('/vehiculos-externos', { placa: 'bbb222', tipo: 'PROVEEDOR', empresa: 'X', descripcion: null })
+  expect(p.lista.map((v) => v.id)).toEqual([2, 1])
+
+  useCatalogosStore().cache = { x: { datos: [], en: Date.now() } }
+  porteria.patch.mockResolvedValue({ data: { id: 1, placa: 'AAA111', activo: true } })
+  await p.actualizar(1, { activo: true })
+  expect(porteria.patch).toHaveBeenCalledWith('/vehiculos-externos/1', { activo: true })
+  expect(p.lista.find((v) => v.id === 1).activo).toBe(true)
+})
