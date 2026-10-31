@@ -78,6 +78,23 @@ test('editar envía solo lo cambiado; un error del servidor queda en el formular
   expect(w.get('[data-test=motivo-form-error]').text()).toBe('Un motivo sin referencia no puede exigirla')
 })
 
+test('al volver a Ninguna la referencia obligatoria se limpia y se puede guardar', async () => {
+  porteria.post.mockResolvedValue({ data: motivo({ id: 3, codigo: 'NUEVO', nombre: 'Nuevo' }) })
+  const w = montar()
+  await flushPromises()
+  await w.get('[data-test=motivo-nuevo]').trigger('click')
+  await w.get('[data-test=motivo-codigo]').setValue('nuevo')
+  await w.get('[data-test=motivo-nombre]').setValue('Nuevo')
+  await w.get('[data-test=motivo-aplica_propio]').setValue(true)
+  await w.get('[data-test=motivo-tipo_referencia]').setValue('ASISTENCIA')
+  await w.get('[data-test=motivo-referencia_obligatoria]').setValue(true)
+  await w.get('[data-test=motivo-tipo_referencia]').setValue('NINGUNA')
+  await w.get('[data-test=motivo-guardar]').trigger('click')
+  await flushPromises()
+  expect(w.find('[data-test=motivo-form-error]').exists()).toBe(false)
+  expect(porteria.post).toHaveBeenCalledWith('/admin/motivos', expect.objectContaining({ tipo_referencia: 'NINGUNA', referencia_obligatoria: false }))
+})
+
 test('activar o inactivar en un toque', async () => {
   porteria.patch.mockResolvedValue({ data: motivo({ id: 2, codigo: 'OTRO', nombre: 'Otro', activo: true, en_uso: true, orden: 120 }) })
   const w = montar()

@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, ref } from 'vue'
+import { reactive, ref, watch } from 'vue'
 import { formularioMotivo, validarMotivo, datosMotivo, TIPOS, SENTIDOS, REFERENCIAS } from '@/admin/motivos'
 
 const props = defineProps({
@@ -12,6 +12,11 @@ const emit = defineEmits(['guardar', 'cancelar'])
 const nuevo = !props.motivo
 const f = reactive(formularioMotivo(props.motivo))
 const local = ref('')
+
+// Sin referencia no hay nada que exigir: la casilla queda desmarcada (y deshabilitada).
+watch(() => f.tipo_referencia, (tipo) => {
+  if (tipo === 'NINGUNA') f.referencia_obligatoria = false
+})
 
 function guardar() {
   local.value = validarMotivo(f, nuevo) || ''

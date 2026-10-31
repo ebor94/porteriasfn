@@ -27,12 +27,16 @@ test('carga, crea, edita y borra manteniendo el orden y limpiando la caché del 
   expect(catalogos.cache).toEqual({})
 
   porteria.patch.mockResolvedValue({ data: { id: 1, nombre: 'B', orden: 5 } })
+  catalogos.cache = { x: { datos: [], en: Date.now() } }
   await m.actualizar(1, { orden: 5 })
   expect(porteria.patch).toHaveBeenCalledWith('/admin/motivos/1', { orden: 5 })
   expect(m.lista.map((x) => x.id)).toEqual([1, 2, 3])
+  expect(catalogos.cache).toEqual({})
 
   porteria.delete.mockResolvedValue({ data: { id: 2 } })
+  catalogos.cache = { x: { datos: [], en: Date.now() } }
   await m.eliminar(2)
   expect(porteria.delete).toHaveBeenCalledWith('/admin/motivos/2')
   expect(m.lista.map((x) => x.id)).toEqual([1, 3])
+  expect(catalogos.cache).toEqual({})
 })

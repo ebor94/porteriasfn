@@ -34,6 +34,8 @@ export function formularioMotivo(m) {
 export function validarMotivo(f, nuevo) {
   if (nuevo && !CODIGO.test(f.codigo.trim().toUpperCase())) return 'Código inválido (letras, números y _; de 2 a 40)'
   if (!f.nombre.trim()) return 'Indica el nombre'
+  if (f.nombre.trim().length > 100) return 'El nombre es demasiado largo'
+  if (f.descripcion.trim().length > 255) return 'La descripción es demasiado larga'
   if (!TIPOS.some((t) => f[t.campo])) return 'Marca al menos un tipo de vehículo'
   if (!SENTIDOS.some((s) => f[s.campo])) return 'Marca al menos un sentido'
   if (f.referencia_obligatoria && f.tipo_referencia === 'NINGUNA') return 'Un motivo sin referencia no puede exigirla'

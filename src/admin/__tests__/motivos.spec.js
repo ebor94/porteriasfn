@@ -22,7 +22,9 @@ test.each([
   [{ aplica_ingreso: false, aplica_salida: false }, 'Marca al menos un sentido'],
   [{ referencia_obligatoria: true }, 'Un motivo sin referencia no puede exigirla'],
   [{ orden: '1.5' }, 'Orden inválido'],
-  [{ orden: '10000' }, 'Orden inválido']
+  [{ orden: '10000' }, 'Orden inválido'],
+  [{ nombre: 'n'.repeat(101) }, 'El nombre es demasiado largo'],
+  [{ nombre: ` ${'n'.repeat(100)} `, descripcion: 'd'.repeat(256) }, 'La descripción es demasiado larga']
 ])('nuevo con %j → %s', (cambio, mensaje) => {
   const f = { ...formularioMotivo(null), codigo: 'NUEVO_1', nombre: 'Nuevo', aplica_propio: true, ...cambio }
   expect(validarMotivo(f, true)).toBe(mensaje)
