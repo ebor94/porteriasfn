@@ -37,11 +37,11 @@ async function abrirCorreccion() {
   motivosCargados.value = false
   try {
     const lista = await catalogos.motivos(props.evento.tipo_vehiculo, props.evento.sentido)
-    // El motivo actual puede estar inactivo: se ofrece igual para no perderlo.
+    // El motivo actual puede estar inactivo o ya no aplicar a este vehículo: se ofrece igual para no perderlo.
     const actual = props.evento.motivo
     motivos.value = lista.some((m) => m.id === props.evento.motivo_id) || !actual
       ? lista
-      : [{ id: props.evento.motivo_id, nombre: `${actual.nombre} (inactivo)`, tipo_referencia: 'NINGUNA', referencia_obligatoria: false }, ...lista]
+      : [{ id: props.evento.motivo_id, nombre: `${actual.nombre} (ya no aplica)`, tipo_referencia: 'NINGUNA', referencia_obligatoria: false }, ...lista]
     motivosCargados.value = true
   } catch (e) {
     error.value = e.message

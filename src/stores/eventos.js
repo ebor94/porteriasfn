@@ -25,7 +25,7 @@ export const useEventosStore = defineStore('eventos', {
       this.delDia.push(...nuevos)
       this.sinMas = !nuevos.length
       this.total = data.total
-      this.pagina = data.pagina
+      this.pagina = data.pagina ?? this.pagina + 1
     },
     async corregir(id, cambios) {
       const { data } = await porteria.patch(`/eventos/${id}`, cambios)

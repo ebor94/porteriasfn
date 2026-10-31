@@ -2,6 +2,8 @@ import { defineStore } from 'pinia'
 import { porteria } from '@/services/api'
 
 const DIEZ_MINUTOS = 10 * 60 * 1000
+// limpiar() la incrementa: una carga que empezó antes no guarda datos que ya se invalidaron.
+let version = 0
 
 export const useCatalogosStore = defineStore('catalogos', {
   state: () => ({ cache: {} }),
@@ -9,8 +11,9 @@ export const useCatalogosStore = defineStore('catalogos', {
     async cacheado(clave, cargar) {
       const guardado = this.cache[clave]
       if (guardado && Date.now() - guardado.en < DIEZ_MINUTOS) return guardado.datos
+      const mia = version
       const datos = await cargar()
-      this.cache[clave] = { datos, en: Date.now() }
+      if (mia === version) this.cache[clave] = { datos, en: Date.now() }
       return datos
     },
     conductores() {
@@ -30,6 +33,7 @@ export const useCatalogosStore = defineStore('catalogos', {
       return (await porteria.get('/vehiculos-externos', { params: { q } })).data
     },
     limpiar() {
+      version++
       this.cache = {}
     }
   }

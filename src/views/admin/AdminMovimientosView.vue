@@ -95,6 +95,7 @@ function consultar() {
     </div>
 
     <p v-if="errorBusqueda || error" class="aviso-error mb-3" role="alert" data-test="consulta-error">{{ error || errorBusqueda }}</p>
+    <button v-if="errorBusqueda" type="button" class="btn-secundario mb-3" :disabled="cargando" data-test="consulta-reintentar" @click="consultar">Reintentar</button>
     <p v-if="consulta.aplicados" class="text-gray-600 mb-2">Mostrando <span data-test="consulta-total">{{ consulta.items.length }} de {{ consulta.total }}</span></p>
     <p v-if="consulta.aplicados && !consulta.items.length && !cargando" class="text-gray-600">Sin movimientos con esos filtros.</p>
 

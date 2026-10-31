@@ -63,9 +63,15 @@ export const useConsultaStore = defineStore('consulta', {
       this.total = data.total
       this.pagina = data.pagina
     },
+    // Con una búsqueda aplicada, el Excel es de lo que se ve en la lista; si no, de los filtros visibles.
     async descargarExcel() {
-      validar(this.filtros)
-      const params = paramsDe(this.filtros)
+      let params
+      if (this.aplicados) {
+        params = { ...this.aplicados }
+      } else {
+        validar(this.filtros)
+        params = paramsDe(this.filtros)
+      }
       const blob = await porteria.get('/admin/reportes/movimientos.xlsx', { params, responseType: 'blob', timeout: TIEMPO_EXCEL })
       guardarArchivo(blob, nombreReporte(params))
     },

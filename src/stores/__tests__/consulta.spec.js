@@ -141,3 +141,18 @@ test('el error de un cargarMas vigente sí se propaga', async () => {
   await c.buscar()
   await expect(c.cargarMas()).rejects.toMatchObject({ message: 'Sin conexión con el servidor' })
 })
+
+test('el Excel usa los filtros de la búsqueda aplicada aunque los visibles hayan cambiado', async () => {
+  const c = useConsultaStore()
+  c.filtros = { ...c.filtros, sede: 2, desde: '2026-10-01', hasta: '2026-10-31' }
+  porteria.get.mockResolvedValueOnce({ data: { items: [], total: 0, pagina: 1 } })
+  await c.buscar()
+  c.filtros = { ...c.filtros, sede: 'todas', desde: '2026-09-01', placa: 'zzz' }
+  const blob = new Blob(['x'])
+  porteria.get.mockResolvedValueOnce(blob)
+  await c.descargarExcel()
+  expect(porteria.get).toHaveBeenLastCalledWith('/admin/reportes/movimientos.xlsx', {
+    params: { sede_id: '2', desde: '2026-10-01', hasta: '2026-10-31' }, responseType: 'blob', timeout: 120000
+  })
+  expect(guardarArchivo).toHaveBeenCalledWith(blob, 'movimientos_2026-10-01_2026-10-31.xlsx')
+})

@@ -68,3 +68,13 @@ test('sinMas: una página sin filas nuevas marca el final y cargarDelDia lo rein
   await ev.cargarDelDia('2026-10-05')
   expect(ev.sinMas).toBe(false)
 })
+
+test('cargarMas avanza la página aunque la respuesta no la traiga', async () => {
+  porteria.get
+    .mockResolvedValueOnce({ data: { items: [{ id: 9 }], total: 3 } })
+    .mockResolvedValueOnce({ data: { items: [{ id: 8 }], total: 3 } })
+  const ev = useEventosStore()
+  await ev.cargarDelDia('2026-10-05')
+  await ev.cargarMas()
+  expect(ev.pagina).toBe(2)
+})

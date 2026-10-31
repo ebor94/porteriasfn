@@ -164,3 +164,13 @@ test('corrige la empresa de un proveedor con el conductor completo', async () =>
     conductor_otro: false, conductor_usuario: null, conductor_nombre: 'Luis', conductor_documento: '1090', empresa: 'Flores SAS'
   })
 })
+
+test('el motivo actual que ya no aplica se ofrece marcado así', async () => {
+  const w = montar(evento({ motivo_id: 99, motivo: { id: 99, nombre: 'Viejo' } }))
+  await flushPromises()
+  await w.get('[data-test=detalle-corregir]').trigger('click')
+  await flushPromises()
+  const opciones = w.findAll('[data-test=correccion-motivo] option').map((o) => o.text())
+  expect(opciones).toContain('Viejo (ya no aplica)')
+  expect(opciones.some((t) => t.includes('(inactivo)'))).toBe(false)
+})

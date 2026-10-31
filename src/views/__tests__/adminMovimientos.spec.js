@@ -115,3 +115,30 @@ test('tocar una fila abre el detalle', async () => {
   await w.findAll('[data-test=consulta-fila]')[0].trigger('click')
   expect(w.find('detalle-evento-stub').exists()).toBe(true)
 })
+
+test('si falla la búsqueda ofrece reintentar', async () => {
+  porteria.get.mockImplementation(async (url) => {
+    if (url === '/eventos') throw { status: 0, motivo: 'SIN_CONEXION', message: 'Sin conexión con el servidor' }
+    return { data: [] }
+  })
+  const w = montar()
+  await flushPromises()
+  expect(w.get('[data-test=consulta-error]').text()).toBe('Sin conexión con el servidor')
+  api()
+  await w.get('[data-test=consulta-reintentar]').trigger('click')
+  await flushPromises()
+  expect(w.find('[data-test=consulta-error]').exists()).toBe(false)
+  expect(w.find('[data-test=consulta-reintentar]').exists()).toBe(false)
+  expect(w.findAll('[data-test=consulta-fila]')).toHaveLength(2)
+})
+
+test('el Excel sale con la búsqueda aplicada, no con filtros sin buscar', async () => {
+  const w = montar()
+  await flushPromises()
+  const aplicada = porteria.get.mock.calls.find(([url]) => url === '/eventos')[1].params
+  await w.get('[data-test=filtro-sede]').setValue('2')
+  await w.get('[data-test=filtro-placa]').setValue('zzz')
+  await w.get('[data-test=consulta-excel]').trigger('click')
+  await flushPromises()
+  expect(porteria.get).toHaveBeenLastCalledWith('/admin/reportes/movimientos.xlsx', { params: aplicada, responseType: 'blob', timeout: 120000 })
+})

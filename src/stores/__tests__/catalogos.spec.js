@@ -40,3 +40,18 @@ test('las búsquedas no se guardan', async () => {
     ['/vehiculos-externos', { params: { q: 'flo' } }]
   ])
 })
+
+test('una carga en vuelo durante limpiar() no vuelve a guardar datos viejos', async () => {
+  let resolver
+  porteria.get
+    .mockReturnValueOnce(new Promise((r) => { resolver = r }))
+    .mockResolvedValueOnce({ data: [{ id: 2, nombre: 'Nuevo' }] })
+  const c = useCatalogosStore()
+  const cargando = c.motivos('PROPIO', 'SALIDA')
+  c.limpiar()
+  resolver({ data: [{ id: 1, nombre: 'Viejo' }] })
+  expect(await cargando).toEqual([{ id: 1, nombre: 'Viejo' }])
+  expect(c.cache).toEqual({})
+  expect(await c.motivos('PROPIO', 'SALIDA')).toEqual([{ id: 2, nombre: 'Nuevo' }])
+  expect(porteria.get).toHaveBeenCalledTimes(2)
+})
