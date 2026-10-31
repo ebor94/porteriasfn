@@ -3,6 +3,8 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createRouter, createMemoryHistory } from 'vue-router'
 
+const confirmar = vi.hoisted(() => vi.fn())
+vi.mock('@/composables/confirmar', () => ({ confirmar }))
 vi.mock('@/services/api', () => ({ porteria: { get: vi.fn(), post: vi.fn() }, tokenStorage: { leer: () => 't', guardar: () => {} } }))
 
 import { useAuthStore } from '@/stores/auth'
@@ -23,6 +25,7 @@ async function montar() {
 beforeEach(() => {
   setActivePinia(createPinia())
   vi.clearAllMocks()
+  confirmar.mockReset()
   useAuthStore().usuario = { usuario: 'g1', nombre: 'G', rol: 'guarda', sede: { id: 1, nombre: 'Norte' } }
 })
 
@@ -45,20 +48,19 @@ function llenarStores() {
 }
 
 test('salir pide confirmación y, si se cancela, no cierra la sesión', async () => {
-  const confirmar = vi.spyOn(window, 'confirm').mockReturnValue(false)
+  confirmar.mockResolvedValue(false)
   const { w, router } = await montar()
   llenarStores()
   await w.get('[data-test=marco-salir]').trigger('click')
   await flushPromises()
-  expect(confirmar).toHaveBeenCalledWith('¿Cerrar sesión?')
+  expect(confirmar).toHaveBeenCalledWith('¿Cerrar sesión?', { aceptar: 'Cerrar sesión' })
   expect(useAuthStore().token).toBe('t')
   expect(router.currentRoute.value.path).toBe('/inicio')
   expect(useEstadoStore().dentro).toHaveLength(1)
-  confirmar.mockRestore()
 })
 
 test('al confirmar sale al login y reinicia estado, eventos y catálogos', async () => {
-  const confirmar = vi.spyOn(window, 'confirm').mockReturnValue(true)
+  confirmar.mockResolvedValue(true)
   const { w, router } = await montar()
   llenarStores()
   await w.get('[data-test=marco-salir]').trigger('click')
@@ -70,5 +72,4 @@ test('al confirmar sale al login y reinicia estado, eventos y catálogos', async
   expect(useEventosStore().delDia).toEqual([])
   expect(useEventosStore().total).toBe(0)
   expect(useCatalogosStore().cache).toEqual({})
-  confirmar.mockRestore()
 })

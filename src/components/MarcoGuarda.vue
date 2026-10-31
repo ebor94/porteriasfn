@@ -1,14 +1,15 @@
 <script setup>
 import { useRouter, RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { confirmar } from '@/composables/confirmar'
 
 defineProps({ titulo: { type: String, default: '' } })
 
 const auth = useAuthStore()
 const router = useRouter()
 
-function salir() {
-  if (!window.confirm('¿Cerrar sesión?')) return
+async function salir() {
+  if (!(await confirmar('¿Cerrar sesión?', { aceptar: 'Cerrar sesión' }))) return
   auth.logout()
   router.replace('/login')
 }

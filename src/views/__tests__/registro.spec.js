@@ -6,6 +6,8 @@ import { createRouter, createMemoryHistory, RouterView } from 'vue-router'
 import { h } from 'vue'
 
 const esHistorial = vi.hoisted(() => vi.fn(() => false))
+const confirmar = vi.hoisted(() => vi.fn())
+vi.mock('@/composables/confirmar', () => ({ confirmar }))
 vi.mock('@/utils/rutas', async (original) => ({ ...(await original()), esNavegacionDeHistorial: esHistorial }))
 
 vi.mock('@/services/api', () => ({
@@ -60,6 +62,7 @@ beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true })
   setActivePinia(createPinia())
   vi.clearAllMocks()
+  confirmar.mockReset()
   esHistorial.mockReset()
   esHistorial.mockReturnValue(false)
   porteria.get.mockReset()
@@ -350,7 +353,7 @@ test('el atrás del sistema retrocede un paso del asistente en vez de salir', as
 })
 
 test('un enlace de la barra en el paso 4 con placa pide confirmar y, si acepta, sale', async () => {
-  const confirmar = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true)
+  confirmar.mockResolvedValueOnce(false).mockResolvedValueOnce(true)
   const { w, router } = await montar()
   await consultar(w)
   await avanzar(w)
@@ -362,31 +365,28 @@ test('un enlace de la barra en el paso 4 con placa pide confirmar y, si acepta, 
   esHistorial.mockReturnValue(false)
   await router.push('/inicio')
   await flushPromises()
-  expect(confirmar).toHaveBeenCalledWith('¿Salir sin registrar?')
+  expect(confirmar).toHaveBeenCalledWith('¿Salir sin registrar?', { aceptar: 'Salir', peligro: true })
   expect(router.currentRoute.value.path).toBe('/registrar')
   expect(w.find('[data-test=paso-motivo]').exists()).toBe(true)
   await router.push('/inicio')
   await flushPromises()
   expect(router.currentRoute.value.path).toBe('/inicio')
-  confirmar.mockRestore()
 })
 
 test('en el primer paso con placa escrita pide confirmar la salida', async () => {
-  const confirmar = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true)
+  confirmar.mockResolvedValueOnce(false).mockResolvedValueOnce(true)
   const { w, router } = await montar()
   await w.get('[data-test=registro-placa]').setValue('abc123')
   await router.push('/inicio')
   await flushPromises()
-  expect(confirmar).toHaveBeenCalledWith('¿Salir sin registrar?')
+  expect(confirmar).toHaveBeenCalledWith('¿Salir sin registrar?', { aceptar: 'Salir', peligro: true })
   expect(router.currentRoute.value.path).toBe('/registrar')
   await router.push('/inicio')
   await flushPromises()
   expect(router.currentRoute.value.path).toBe('/inicio')
-  confirmar.mockRestore()
 })
 
 test('sin placa escrita sale sin preguntar y tras registrar no se bloquea la ida al inicio', async () => {
-  const confirmar = vi.spyOn(window, 'confirm')
   const vacio = await montar()
   await vacio.router.push('/inicio')
   await flushPromises()
@@ -399,5 +399,4 @@ test('sin placa escrita sale sin preguntar y tras registrar no se bloquea la ida
   await avanzar(w)
   expect(router.currentRoute.value.path).toBe('/inicio')
   expect(confirmar).not.toHaveBeenCalled()
-  confirmar.mockRestore()
 })

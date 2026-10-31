@@ -3,6 +3,8 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createRouter, createMemoryHistory } from 'vue-router'
 
+const confirmar = vi.hoisted(() => vi.fn())
+vi.mock('@/composables/confirmar', () => ({ confirmar }))
 vi.mock('@/services/api', () => ({
   porteria: { post: vi.fn(), get: vi.fn() },
   tokenStorage: { leer: () => 't', guardar: () => {} }
@@ -16,6 +18,7 @@ import SedeView from '@/views/SedeView.vue'
 beforeEach(() => {
   setActivePinia(createPinia())
   vi.clearAllMocks()
+  confirmar.mockReset()
 })
 
 test('lista las sedes y al elegir una va al inicio', async () => {
@@ -59,7 +62,7 @@ test('ignora un redirect que sale de la app', async () => {
 })
 
 test('salir pide confirmación; al confirmar cierra la sesión y reinicia los datos', async () => {
-  const confirmar = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true)
+  confirmar.mockResolvedValueOnce(false).mockResolvedValueOnce(true)
   porteria.get.mockResolvedValue({ data: [{ id: 1, nombre: 'Norte' }] })
   useAuthStore().usuario = { usuario: 'g', nombre: 'G', rol: 'guarda', sede: null }
   useEstadoStore().dentro = [{ placa: 'A' }]
@@ -71,12 +74,11 @@ test('salir pide confirmación; al confirmar cierra la sesión y reinicia los da
   await flushPromises()
   await w.get('[data-test=sede-salir]').trigger('click')
   await flushPromises()
-  expect(confirmar).toHaveBeenCalledWith('¿Cerrar sesión?')
+  expect(confirmar).toHaveBeenCalledWith('¿Cerrar sesión?', { aceptar: 'Cerrar sesión' })
   expect(router.currentRoute.value.path).toBe('/sede')
   await w.get('[data-test=sede-salir]').trigger('click')
   await flushPromises()
   expect(router.currentRoute.value.path).toBe('/login')
   expect(useAuthStore().token).toBeNull()
   expect(useEstadoStore().dentro).toEqual([])
-  confirmar.mockRestore()
 })

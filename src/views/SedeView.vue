@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { confirmar } from '@/composables/confirmar'
 import { rutaInterna } from '@/utils/rutas'
 
 const auth = useAuthStore()
@@ -31,8 +32,8 @@ async function elegir(id) {
   }
 }
 
-function salir() {
-  if (!window.confirm('¿Cerrar sesión?')) return
+async function salir() {
+  if (!(await confirmar('¿Cerrar sesión?', { aceptar: 'Cerrar sesión' }))) return
   auth.logout()
   router.replace('/login')
 }

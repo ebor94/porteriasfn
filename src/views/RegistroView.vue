@@ -6,6 +6,7 @@ import MarcoGuarda from '@/components/MarcoGuarda.vue'
 import ListaBuscable from '@/components/ListaBuscable.vue'
 import DialogoInconsistencia from '@/components/DialogoInconsistencia.vue'
 import { useAuthStore } from '@/stores/auth'
+import { confirmar } from '@/composables/confirmar'
 import { useCatalogosStore } from '@/stores/catalogos'
 import { useEstadoStore } from '@/stores/estado'
 import { useEventosStore } from '@/stores/eventos'
@@ -155,7 +156,7 @@ onBeforeRouteLeave((to) => {
     indice.value -= 1
     return false
   }
-  return !normalizarPlaca(estado.placa) || window.confirm('¿Salir sin registrar?')
+  return !normalizarPlaca(estado.placa) || confirmar('¿Salir sin registrar?', { aceptar: 'Salir', peligro: true })
 })
 
 function registrarIgual(observacion) {
