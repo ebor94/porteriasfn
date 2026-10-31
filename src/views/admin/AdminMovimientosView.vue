@@ -112,8 +112,8 @@ function consultar() {
       </li>
     </ul>
     <button
-      v-if="consulta.total > consulta.items.length" type="button" class="btn-secundario w-full mt-3"
-      :disabled="cargandoMas" data-test="consulta-mas" @click="cargarMas"
+      v-if="consulta.total > consulta.items.length && !consulta.sinMas" type="button" class="btn-secundario w-full mt-3"
+      :disabled="cargandoMas || cargando" data-test="consulta-mas" @click="cargarMas"
     >{{ cargandoMas ? 'Cargando…' : 'Cargar más' }}</button>
   </MarcoAdmin>
 </template>

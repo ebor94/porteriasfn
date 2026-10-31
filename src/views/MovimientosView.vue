@@ -100,7 +100,7 @@ async function aceptar(valor) {
       </li>
     </ul>
     <button
-      v-if="eventos.total > eventos.delDia.length" type="button" class="btn-secundario w-full mt-3"
+      v-if="eventos.total > eventos.delDia.length && !eventos.sinMas" type="button" class="btn-secundario w-full mt-3"
       :disabled="cargandoMas" data-test="movimientos-mas" @click="cargarMas"
     >{{ cargandoMas ? 'Cargando…' : 'Cargar más' }}</button>
     <DialogoTexto

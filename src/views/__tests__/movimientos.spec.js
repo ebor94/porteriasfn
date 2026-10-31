@@ -195,3 +195,15 @@ test('si "Cargar más" falla, avisa y deja reintentar', async () => {
   expect(w.get('[data-test=movimientos-error]').text()).toBe('Sin conexión con el servidor')
   expect(w.find('[data-test=movimientos-mas]').exists()).toBe(true)
 })
+
+test('oculta "Cargar más" cuando la última página no trajo filas nuevas', async () => {
+  const fila1 = { id: 1, sentido: 'SALIDA', placa: 'CAR1', tipo_vehiculo: 'PROPIO', motivo: { nombre: 'Tanqueo' }, conductor_nombre: 'Juan', registrado_por: 'g1', registrado_at: reciente(), anulado: false, inconsistente: false }
+  porteria.get
+    .mockResolvedValueOnce({ data: { items: [fila1], total: 4, pagina: 1 } })
+    .mockResolvedValueOnce({ data: { items: [fila1], total: 4, pagina: 2 } })
+  const w = montar()
+  await flushPromises()
+  await w.get('[data-test=movimientos-mas]').trigger('click')
+  await flushPromises()
+  expect(w.find('[data-test=movimientos-mas]').exists()).toBe(false)
+})

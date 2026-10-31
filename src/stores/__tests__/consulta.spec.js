@@ -52,3 +52,54 @@ test('descarga el Excel con los filtros visibles', async () => {
   })
   expect(guardarArchivo).toHaveBeenCalledWith(blob, 'movimientos_2026-10-01_2026-10-31.xlsx')
 })
+
+test('una respuesta vieja de buscar no pisa la de la búsqueda más reciente', async () => {
+  const c = useConsultaStore()
+  let resolverViejo
+  let resolverNuevo
+  porteria.get
+    .mockReturnValueOnce(new Promise((r) => { resolverViejo = r }))
+    .mockReturnValueOnce(new Promise((r) => { resolverNuevo = r }))
+  c.filtros.placa = 'old'
+  const viejo = c.buscar()
+  c.filtros.placa = 'new'
+  const nuevo = c.buscar()
+  resolverNuevo({ data: { items: [{ id: 2 }], total: 1, pagina: 1 } })
+  await nuevo
+  resolverViejo({ data: { items: [{ id: 1 }, { id: 0 }], total: 2, pagina: 1 } })
+  await viejo
+  expect(c.items.map((e) => e.id)).toEqual([2])
+  expect(c.total).toBe(1)
+  expect(c.aplicados.placa).toBe('NEW')
+})
+
+test('cargarMas en curso no agrega filas si después se hizo otra búsqueda', async () => {
+  const c = useConsultaStore()
+  let resolverMas
+  porteria.get.mockResolvedValueOnce({ data: { items: [{ id: 5 }], total: 3, pagina: 1 } })
+  await c.buscar()
+  porteria.get.mockReturnValueOnce(new Promise((r) => { resolverMas = r }))
+  const mas = c.cargarMas()
+  c.filtros.placa = 'zzz'
+  porteria.get.mockResolvedValueOnce({ data: { items: [{ id: 9 }], total: 1, pagina: 1 } })
+  await c.buscar()
+  resolverMas({ data: { items: [{ id: 4 }], total: 3, pagina: 2 } })
+  await mas
+  expect(c.items.map((e) => e.id)).toEqual([9])
+  expect(c.total).toBe(1)
+  expect(c.pagina).toBe(1)
+})
+
+test('sinMas: una página sin filas nuevas marca el final y buscar lo reinicia', async () => {
+  const c = useConsultaStore()
+  porteria.get
+    .mockResolvedValueOnce({ data: { items: [{ id: 5 }], total: 3, pagina: 1 } })
+    .mockResolvedValueOnce({ data: { items: [{ id: 5 }], total: 3, pagina: 2 } })
+    .mockResolvedValueOnce({ data: { items: [{ id: 6 }], total: 3, pagina: 1 } })
+  await c.buscar()
+  expect(c.sinMas).toBe(false)
+  await c.cargarMas()
+  expect(c.sinMas).toBe(true)
+  await c.buscar()
+  expect(c.sinMas).toBe(false)
+})

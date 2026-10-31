@@ -81,3 +81,29 @@ test('un error de la consulta o del Excel se muestra', async () => {
   await flushPromises()
   expect(w.get('[data-test=consulta-error]').text()).toBe('La fecha inicial es posterior a la final')
 })
+
+test('oculta "Cargar más" cuando la última página no trajo filas nuevas', async () => {
+  porteria.get.mockImplementation(async (url, opciones = {}) => {
+    if (url === '/eventos') return { data: opciones.params.pagina === 2 ? { items: [evento(1)], total: 5, pagina: 2 } : { items: [evento(1)], total: 5, pagina: 1 } }
+    return { data: [] }
+  })
+  const w = montar()
+  await flushPromises()
+  await w.get('[data-test=consulta-mas]').trigger('click')
+  await flushPromises()
+  expect(w.find('[data-test=consulta-mas]').exists()).toBe(false)
+})
+
+test('"Cargar más" queda deshabilitado mientras se busca', async () => {
+  const w = montar()
+  await flushPromises()
+  let resolver
+  porteria.get.mockImplementation((url) => (url === '/eventos' ? new Promise((r) => { resolver = r }) : Promise.resolve({ data: [] })))
+  await w.get('[data-test=filtro-desde]').setValue('2026-10-01')
+  await w.get('[data-test=consulta-buscar]').trigger('click')
+  await flushPromises()
+  expect(w.get('[data-test=consulta-mas]').attributes('disabled')).toBeDefined()
+  resolver({ data: { items: [evento(7)], total: 3, pagina: 1 } })
+  await flushPromises()
+  expect(w.get('[data-test=consulta-mas]').attributes('disabled')).toBeUndefined()
+})

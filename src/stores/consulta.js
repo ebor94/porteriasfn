@@ -8,6 +8,9 @@ const filtrosIniciales = () => ({ sede: 'todas', desde: hoyLocal(), hasta: hoyLo
 // Un Excel de muchas filas tarda más que una consulta normal.
 const TIEMPO_EXCEL = 120000
 
+// Generación de la consulta: cada buscar la incrementa; las respuestas de generaciones anteriores se descartan.
+let generacion = 0
+
 export function paramsDe(f) {
   const p = { sede_id: f.sede === 'todas' ? 'todas' : String(f.sede) }
   if (f.desde) p.desde = f.desde
@@ -26,21 +29,29 @@ function validar(f) {
 
 // Consulta del admin: los filtros que se ven, y los ya aplicados para paginar sin mezclar.
 export const useConsultaStore = defineStore('consulta', {
-  state: () => ({ filtros: filtrosIniciales(), aplicados: null, items: [], total: 0, pagina: 0 }),
+  state: () => ({ filtros: filtrosIniciales(), aplicados: null, items: [], total: 0, pagina: 0, sinMas: false }),
   actions: {
     async buscar() {
       validar(this.filtros)
       const params = paramsDe(this.filtros)
+      const mia = ++generacion
       const { data } = await porteria.get('/eventos', { params })
+      if (mia !== generacion) return
       this.aplicados = params
       this.items = data.items
       this.total = data.total
       this.pagina = data.pagina
+      this.sinMas = false
     },
     async cargarMas() {
+      const mia = generacion
       const { data } = await porteria.get('/eventos', { params: { ...this.aplicados, pagina: this.pagina + 1 } })
+      // Si hubo otra búsqueda mientras tanto, esta página es de filtros anteriores.
+      if (mia !== generacion) return
       const vistos = new Set(this.items.map((e) => e.id))
-      this.items.push(...data.items.filter((e) => !vistos.has(e.id)))
+      const nuevos = data.items.filter((e) => !vistos.has(e.id))
+      this.items.push(...nuevos)
+      this.sinMas = !nuevos.length
       this.total = data.total
       this.pagina = data.pagina
     },

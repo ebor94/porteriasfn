@@ -54,3 +54,17 @@ test('cargar más pide la página siguiente del mismo día y no repite filas', a
   expect(ev.delDia.map((e) => e.id)).toEqual([9, 8, 7])
   expect(ev.pagina).toBe(2)
 })
+
+test('sinMas: una página sin filas nuevas marca el final y cargarDelDia lo reinicia', async () => {
+  porteria.get
+    .mockResolvedValueOnce({ data: { items: [{ id: 9 }], total: 3, pagina: 1 } })
+    .mockResolvedValueOnce({ data: { items: [{ id: 9 }], total: 3, pagina: 2 } })
+    .mockResolvedValueOnce({ data: { items: [{ id: 9 }], total: 3, pagina: 1 } })
+  const ev = useEventosStore()
+  await ev.cargarDelDia('2026-10-05')
+  expect(ev.sinMas).toBe(false)
+  await ev.cargarMas()
+  expect(ev.sinMas).toBe(true)
+  await ev.cargarDelDia('2026-10-05')
+  expect(ev.sinMas).toBe(false)
+})
