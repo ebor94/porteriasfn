@@ -20,15 +20,21 @@ watch(() => confirmacion.abierta, async (abierta) => {
   }
 })
 
-// Tab no sale del diálogo: se alterna entre sus dos botones.
+// Tab no sale del diálogo: se alterna entre sus dos botones. Con el foco fuera de ellos (tras un clic
+// en el fondo), Tab entra por Cancelar y Shift+Tab por Aceptar.
 function atrapar(e) {
   const primero = cancelar.value
   const ultimo = aceptar.value
   if (!primero || !ultimo) return
-  if (e.shiftKey && document.activeElement === primero) {
+  const activo = document.activeElement
+  if (activo !== primero && activo !== ultimo) {
+    e.preventDefault()
+    if (e.shiftKey) ultimo.focus()
+    else primero.focus()
+  } else if (e.shiftKey && activo === primero) {
     e.preventDefault()
     ultimo.focus()
-  } else if (!e.shiftKey && document.activeElement === ultimo) {
+  } else if (!e.shiftKey && activo === ultimo) {
     e.preventDefault()
     primero.focus()
   }
