@@ -1,5 +1,8 @@
 import { defineStore } from 'pinia'
 import { porteria, tokenStorage } from '@/services/api'
+import { useCatalogosStore } from '@/stores/catalogos'
+import { useEstadoStore } from '@/stores/estado'
+import { useEventosStore } from '@/stores/eventos'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({ token: tokenStorage.leer(), usuario: null, sedes: [], servicioNoDisponible: false }),
@@ -49,6 +52,10 @@ export const useAuthStore = defineStore('auth', {
       this.usuario = null
       this.sedes = []
       tokenStorage.guardar(null)
+      // Nada de la sesión anterior debe verse con la siguiente.
+      useEstadoStore().$reset()
+      useEventosStore().$reset()
+      useCatalogosStore().limpiar()
     }
   }
 })

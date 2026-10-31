@@ -54,7 +54,7 @@ async function entrar() {
         <label class="etiqueta" for="clave">Contraseña</label>
         <input id="clave" v-model="clave" type="password" class="campo" autocomplete="current-password" data-test="login-clave" />
       </div>
-      <p v-if="error" class="aviso-error" data-test="login-error">{{ error }}</p>
+      <p v-if="error" class="aviso-error" role="alert" data-test="login-error">{{ error }}</p>
       <button type="submit" class="btn-primario w-full" :disabled="enviando" data-test="login-entrar">
         {{ enviando ? 'Entrando…' : 'Entrar' }}
       </button>

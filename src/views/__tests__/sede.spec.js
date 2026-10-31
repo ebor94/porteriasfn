@@ -10,6 +10,7 @@ vi.mock('@/services/api', () => ({
 
 import { porteria } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
+import { useEstadoStore } from '@/stores/estado'
 import SedeView from '@/views/SedeView.vue'
 
 beforeEach(() => {
@@ -55,4 +56,27 @@ test('respeta un redirect interno', async () => {
 test('ignora un redirect que sale de la app', async () => {
   expect(await elegirConRedirect('//malo.com')).toBe('/inicio')
   expect(await elegirConRedirect('https://malo.com')).toBe('/inicio')
+})
+
+test('salir pide confirmación; al confirmar cierra la sesión y reinicia los datos', async () => {
+  const confirmar = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true)
+  porteria.get.mockResolvedValue({ data: [{ id: 1, nombre: 'Norte' }] })
+  useAuthStore().usuario = { usuario: 'g', nombre: 'G', rol: 'guarda', sede: null }
+  useEstadoStore().dentro = [{ placa: 'A' }]
+  const vacia = { template: '<div />' }
+  const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/sede', component: SedeView }, { path: '/login', component: vacia }] })
+  router.push('/sede')
+  await router.isReady()
+  const w = mount(SedeView, { global: { plugins: [router] } })
+  await flushPromises()
+  await w.get('[data-test=sede-salir]').trigger('click')
+  await flushPromises()
+  expect(confirmar).toHaveBeenCalledWith('¿Cerrar sesión?')
+  expect(router.currentRoute.value.path).toBe('/sede')
+  await w.get('[data-test=sede-salir]').trigger('click')
+  await flushPromises()
+  expect(router.currentRoute.value.path).toBe('/login')
+  expect(useAuthStore().token).toBeNull()
+  expect(useEstadoStore().dentro).toEqual([])
+  confirmar.mockRestore()
 })

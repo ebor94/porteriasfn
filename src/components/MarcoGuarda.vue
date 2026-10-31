@@ -8,6 +8,7 @@ const auth = useAuthStore()
 const router = useRouter()
 
 function salir() {
+  if (!window.confirm('¿Cerrar sesión?')) return
   auth.logout()
   router.replace('/login')
 }

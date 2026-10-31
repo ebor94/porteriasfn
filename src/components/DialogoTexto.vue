@@ -12,7 +12,7 @@ const emit = defineEmits(['aceptar', 'cancelar'])
 const valor = ref(String(props.valorInicial ?? ''))
 const valido = computed(() => {
   const v = valor.value.trim()
-  if (props.numerico) return /^\d{1,7}$/.test(v)
+  if (props.numerico) return /^\d{1,7}$/.test(v) && Number(v) <= 5000000
   return !props.obligatorio || v.length > 0
 })
 </script>

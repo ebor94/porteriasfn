@@ -54,6 +54,8 @@ test('muestra el error del servidor y el aviso de sesión vencida', async () => 
   await w.get('form').trigger('submit')
   await flushPromises()
   expect(w.get('[data-test=login-error]').text()).toBe('Usuario o contraseña incorrectos')
+  expect(w.get('[data-test=login-error]').attributes('role')).toBe('alert')
+  expect(w.get('[data-test=login-aviso]').attributes('role')).toBe('alert')
 })
 
 test('no envía sin usuario y clave', async () => {

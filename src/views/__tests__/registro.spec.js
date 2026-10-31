@@ -114,6 +114,7 @@ test('un paso incompleto muestra el error y no avanza', async () => {
   const { w } = await montar()
   await avanzar(w)
   expect(w.get('[data-test=registro-error]').text()).toBe('Escribe la placa')
+  expect(w.get('[data-test=registro-error]').attributes('role')).toBe('alert')
   expect(w.find('[data-test=paso-placa]').exists()).toBe(true)
 })
 
@@ -160,7 +161,9 @@ test('los campos de texto respetan los límites del servidor', async () => {
   await w.get('[data-test=registro-consultar]').trigger('click')
   await flushPromises()
   await avanzar(w)
+  expect(w.get('[data-test=registro-tipo-PROVEEDOR]').attributes('aria-pressed')).toBe('false')
   await w.get('[data-test=registro-tipo-PROVEEDOR]').trigger('click')
+  expect(w.get('[data-test=registro-tipo-PROVEEDOR]').attributes('aria-pressed')).toBe('true')
   await avanzar(w)
   expect(w.get('[data-test=registro-empresa]').attributes('maxlength')).toBe('150')
   expect(w.get('[data-test=registro-conductor-nombre]').attributes('maxlength')).toBe('150')

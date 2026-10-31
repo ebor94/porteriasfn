@@ -6,6 +6,9 @@ import { createRouter, createMemoryHistory } from 'vue-router'
 vi.mock('@/services/api', () => ({ porteria: { get: vi.fn(), post: vi.fn() }, tokenStorage: { leer: () => 't', guardar: () => {} } }))
 
 import { useAuthStore } from '@/stores/auth'
+import { useEstadoStore } from '@/stores/estado'
+import { useEventosStore } from '@/stores/eventos'
+import { useCatalogosStore } from '@/stores/catalogos'
 import MarcoGuarda from '@/components/MarcoGuarda.vue'
 
 async function montar() {
@@ -31,4 +34,41 @@ test('avisa de forma persistente si Portería está deshabilitada', async () => 
   const barra = w.get('[data-test=marco-servicio]')
   expect(barra.text()).toBe('Portería no está disponible en este momento. Avisa a TI.')
   expect(barra.attributes('role')).toBe('alert')
+})
+
+function llenarStores() {
+  useEstadoStore().dentro = [{ placa: 'A' }]
+  useEstadoStore().fuera = [{ placa: 'B' }]
+  useEventosStore().delDia = [{ id: 1 }]
+  useEventosStore().total = 1
+  useCatalogosStore().cache = { conductores: { datos: [], en: Date.now() } }
+}
+
+test('salir pide confirmación y, si se cancela, no cierra la sesión', async () => {
+  const confirmar = vi.spyOn(window, 'confirm').mockReturnValue(false)
+  const { w, router } = await montar()
+  llenarStores()
+  await w.get('[data-test=marco-salir]').trigger('click')
+  await flushPromises()
+  expect(confirmar).toHaveBeenCalledWith('¿Cerrar sesión?')
+  expect(useAuthStore().token).toBe('t')
+  expect(router.currentRoute.value.path).toBe('/inicio')
+  expect(useEstadoStore().dentro).toHaveLength(1)
+  confirmar.mockRestore()
+})
+
+test('al confirmar sale al login y reinicia estado, eventos y catálogos', async () => {
+  const confirmar = vi.spyOn(window, 'confirm').mockReturnValue(true)
+  const { w, router } = await montar()
+  llenarStores()
+  await w.get('[data-test=marco-salir]').trigger('click')
+  await flushPromises()
+  expect(useAuthStore().token).toBeNull()
+  expect(router.currentRoute.value.path).toBe('/login')
+  expect(useEstadoStore().dentro).toEqual([])
+  expect(useEstadoStore().fuera).toEqual([])
+  expect(useEventosStore().delDia).toEqual([])
+  expect(useEventosStore().total).toBe(0)
+  expect(useCatalogosStore().cache).toEqual({})
+  confirmar.mockRestore()
 })
