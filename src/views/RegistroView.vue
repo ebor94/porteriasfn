@@ -11,6 +11,7 @@ import { useCatalogosStore } from '@/stores/catalogos'
 import { useEstadoStore } from '@/stores/estado'
 import { useEventosStore } from '@/stores/eventos'
 import { normalizarPlaca } from '@/utils/placa'
+import { nuevaClave } from '@/utils/clave'
 import { esNavegacionDeHistorial } from '@/utils/rutas'
 import { estadoInicial, aplicarSugerencia, elegirMotivo, pasosPara, validarPaso, construirCuerpo, detalleInconsistencia } from '@/registro/modelo'
 
@@ -128,6 +129,7 @@ function atras() {
 async function enviar(forzar) {
   enviando.value = true
   error.value = ''
+  if (!estado.clave) estado.clave = nuevaClave()
   try {
     const ev = await eventos.registrar(construirCuerpo(estado, motivo.value, { forzar }))
     toast.success(`${ev.sentido === 'INGRESO' ? 'Ingreso' : 'Salida'} de ${ev.placa} ${ev.sentido === 'INGRESO' ? 'registrado' : 'registrada'}`)

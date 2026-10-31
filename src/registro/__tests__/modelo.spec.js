@@ -214,3 +214,10 @@ test('detalleInconsistencia', () => {
   expect(detalleInconsistencia({ dentro: true, sede_id: 1, desde: new Date(2026, 9, 5, 14, 20).toISOString() }, nombre)).toBe('Figura dentro de Norte desde las 14:20.')
   expect(detalleInconsistencia({ dentro: false, sede_id: 1, desde: null }, nombre)).toBe('Figura fuera.')
 })
+
+test('la clave viaja como clave_cliente solo si existe', () => {
+  const estado = { ...estadoInicial('SALIDA'), placa: 'abc123', tipo: 'PROPIO', motivoId: 6, conductor: { modo: 'ad', usuario: 'j', nombre: 'J', documento: '' } }
+  expect(estadoInicial().clave).toBeNull()
+  expect(construirCuerpo(estado, null)).not.toHaveProperty('clave_cliente')
+  expect(construirCuerpo({ ...estado, clave: 'k-12345678' }, null).clave_cliente).toBe('k-12345678')
+})

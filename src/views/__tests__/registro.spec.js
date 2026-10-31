@@ -96,7 +96,8 @@ test('registra la salida de un propio con los pasos que aplican', async () => {
   await llenarHastaConfirmar(w)
   await avanzar(w)
   expect(porteria.post).toHaveBeenCalledWith('/eventos', {
-    sentido: 'SALIDA', placa: 'ABC123', motivo_id: 6, conductor_usuario: 'jperez', conductor_nombre: 'Juan Pérez', kilometraje: 1200
+    sentido: 'SALIDA', placa: 'ABC123', motivo_id: 6, conductor_usuario: 'jperez', conductor_nombre: 'Juan Pérez', kilometraje: 1200,
+    clave_cliente: expect.any(String)
   })
   expect(router.currentRoute.value.path).toBe('/inicio')
 })
@@ -399,4 +400,43 @@ test('sin placa escrita sale sin preguntar y tras registrar no se bloquea la ida
   await avanzar(w)
   expect(router.currentRoute.value.path).toBe('/inicio')
   expect(confirmar).not.toHaveBeenCalled()
+})
+
+test('el reenvío forzado usa la misma clave; otra placa estrena clave', async () => {
+  porteria.post
+    .mockRejectedValueOnce({ status: 409, motivo: 'SENTIDO_INCOHERENTE', message: 'Figura fuera', errors: { estado: { dentro: false, sede_id: 1 } } })
+    .mockResolvedValueOnce({ data: { id: 2, sentido: 'SALIDA', placa: 'ABC123' } })
+  const { w } = await montar()
+  await llenarHastaConfirmar(w)
+  await avanzar(w)
+  await w.get('[data-test=inconsistencia-observacion]').setValue('Sin registro previo')
+  await w.get('[data-test=inconsistencia-registrar]').trigger('click')
+  await flushPromises()
+  const [[, primero], [, segundo]] = porteria.post.mock.calls
+  expect(primero.clave_cliente).toMatch(/^[A-Za-z0-9-]{8,64}$/)
+  expect(segundo.clave_cliente).toBe(primero.clave_cliente)
+})
+
+test('consultar otra placa descarta la clave anterior', async () => {
+  porteria.post.mockRejectedValueOnce({ status: 0, motivo: 'SIN_CONEXION', message: 'Sin conexión' })
+  const { w } = await montar()
+  await llenarHastaConfirmar(w)
+  await avanzar(w)
+  const clave = porteria.post.mock.calls[0][1].clave_cliente
+  // Cuatro pasos atrás (confirmar → detalles → motivo → conductor → placa); un quinto saldría de la ruta.
+  for (let i = 0; i < 4; i += 1) await w.get('[data-test=registro-atras]').trigger('click')
+  await w.get('[data-test=registro-placa]').setValue('abc-123')
+  await w.get('[data-test=registro-consultar]').trigger('click')
+  await flushPromises()
+  porteria.post.mockResolvedValueOnce({ data: { id: 3, sentido: 'SALIDA', placa: 'ABC123' } })
+  await avanzar(w)
+  await vi.advanceTimersByTimeAsync(300)
+  await flushPromises()
+  await w.get('[data-test=buscable-item]').trigger('click')
+  await avanzar(w)
+  await w.get('[data-test=registro-motivo-6]').trigger('click')
+  await avanzar(w)
+  await avanzar(w)
+  await avanzar(w)
+  expect(porteria.post.mock.calls[1][1].clave_cliente).not.toBe(clave)
 })

@@ -20,7 +20,9 @@ export function estadoInicial(sentido = null) {
     motivoId: null,
     referencia: { asistenciaId: null, exequiaId: null, texto: '', etiqueta: '' },
     kilometraje: '',
-    observaciones: ''
+    observaciones: '',
+    // Se fija al primer envío y se conserva en los reintentos de ese mismo registro.
+    clave: null
   }
 }
 
@@ -134,6 +136,7 @@ export function construirCuerpo(estado, motivo, { forzar = false } = {}) {
   if (motivo && motivo.tipo_referencia === 'EXEQUIA' && r.exequiaId) cuerpo.exequia_id = r.exequiaId
   if (motivo && motivo.tipo_referencia === 'TEXTO' && !vacio(r.texto)) cuerpo.referencia_texto = texto(r.texto)
   if (!vacio(estado.observaciones)) cuerpo.observaciones = texto(estado.observaciones)
+  if (estado.clave) cuerpo.clave_cliente = estado.clave
   if (forzar) cuerpo.forzar = true
   return cuerpo
 }
