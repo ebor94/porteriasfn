@@ -81,3 +81,18 @@ test('avisa cuando Portería está deshabilitada y cuando vuelve a responder', a
   await porteria.get('/estado/dentro')
   expect(aviso).toHaveBeenLastCalledWith(true)
 })
+
+test('una descarga que falla trae el error del contrato aunque llegue como Blob', async () => {
+  const cuerpo = { success: false, error: 'POR-ADM-005', motivo: 'DEMASIADOS_REGISTROS', message: 'El reporte supera 50000 movimientos.' }
+  responder(413, new Blob([JSON.stringify(cuerpo)], { type: 'application/json' }))
+  await expect(porteria.get('/admin/reportes/movimientos.xlsx', { responseType: 'blob' })).rejects.toEqual({
+    status: 413, codigo: 'POR-ADM-005', motivo: 'DEMASIADOS_REGISTROS', message: 'El reporte supera 50000 movimientos.', errors: [],
+  })
+})
+
+test('un Blob de error que no es JSON se trata como servidor sin contrato', async () => {
+  responder(502, new Blob(['<html>Bad Gateway</html>'], { type: 'text/html' }))
+  await expect(porteria.get('/admin/reportes/movimientos.xlsx', { responseType: 'blob' })).rejects.toMatchObject({
+    status: 502, motivo: 'SIN_CONEXION',
+  })
+})

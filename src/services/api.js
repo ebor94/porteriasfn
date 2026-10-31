@@ -56,6 +56,25 @@ function avisarSiExpiro(e, err) {
   if (actual && usado === `Bearer ${actual}`) alExpirar(err)
 }
 
+// Las descargas piden `responseType: 'blob'`: un error llega como Blob y hay que leer su JSON.
+async function leerErrorBlob(e) {
+  const r = e && e.response
+  if (!r || typeof Blob === 'undefined' || !(r.data instanceof Blob)) return
+  try {
+    const texto = typeof r.data.text === 'function'
+      ? await r.data.text()
+      : await new Promise((ok, mal) => {
+        const lector = new FileReader()
+        lector.onload = () => ok(lector.result)
+        lector.onerror = mal
+        lector.readAsText(r.data)
+      })
+    r.data = JSON.parse(texto)
+  } catch {
+    r.data = null
+  }
+}
+
 function crearCliente(baseURL) {
   const cliente = axios.create({ baseURL, timeout: 20000 })
   cliente.interceptors.request.use((config) => {
@@ -68,7 +87,8 @@ function crearCliente(baseURL) {
       if (alDisponibilidad) alDisponibilidad(true)
       return r.data
     },
-    (e) => {
+    async (e) => {
+      await leerErrorBlob(e)
       const err = normalizarError(e)
       if (err.status === 503 && err.motivo === 'PORTERIA_DESHABILITADO' && alDisponibilidad) alDisponibilidad(false)
       avisarSiExpiro(e, err)
