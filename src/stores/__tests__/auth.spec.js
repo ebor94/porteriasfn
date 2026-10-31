@@ -71,3 +71,11 @@ test('logout cancela una confirmación abierta', async () => {
   expect(await respuesta).toBe(false)
   expect(confirmacion.abierta).toBe(false)
 })
+
+test('el admin sin sede empieza en la administración', () => {
+  const auth = useAuthStore()
+  auth.usuario = { usuario: 'a', rol: 'admin_porteria', sede: null }
+  expect(auth.rutaInicio).toBe('/admin')
+  auth.usuario = { usuario: 'a', rol: 'admin_porteria', sede: { id: 1 } }
+  expect(auth.rutaInicio).toBe('/inicio')
+})

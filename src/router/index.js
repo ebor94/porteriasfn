@@ -9,13 +9,18 @@ export const routes = [
   { path: '/inicio', component: () => import('@/views/InicioView.vue'), meta: { requiereSede: true } },
   { path: '/registrar/:sentido?', component: () => import('@/views/RegistroView.vue'), meta: { requiereSede: true } },
   { path: '/vehiculos', component: () => import('@/views/VehiculosView.vue'), meta: { requiereSede: true } },
-  { path: '/movimientos', component: () => import('@/views/MovimientosView.vue'), meta: { requiereSede: true } }
+  { path: '/movimientos', component: () => import('@/views/MovimientosView.vue'), meta: { requiereSede: true } },
+  { path: '/admin', redirect: '/admin/movimientos' },
+  { path: '/admin/movimientos', component: () => import('@/views/admin/AdminMovimientosView.vue'), meta: { requiereAdmin: true } },
+  { path: '/admin/motivos', component: () => import('@/views/admin/AdminMotivosView.vue'), meta: { requiereAdmin: true } },
+  { path: '/admin/proveedores', component: () => import('@/views/admin/AdminProveedoresView.vue'), meta: { requiereAdmin: true } }
 ]
 
 export function decidirNavegacion(to, auth) {
   const meta = to.meta || {}
   if (meta.publica) return to.path === '/login' && auth.autenticado ? { path: auth.rutaInicio } : true
   if (!auth.token) return { path: '/login', query: { redirect: to.fullPath } }
+  if (meta.requiereAdmin && !auth.esAdmin) return { path: auth.rutaInicio }
   if (meta.requiereSede && !auth.sede) return { path: '/sede' }
   return true
 }

@@ -82,3 +82,15 @@ test('salir pide confirmación; al confirmar cierra la sesión y reinicia los da
   expect(useAuthStore().token).toBeNull()
   expect(useEstadoStore().dentro).toEqual([])
 })
+
+test('el admin puede ir a la administración sin elegir sede', async () => {
+  porteria.get.mockResolvedValue({ data: [] })
+  useAuthStore().usuario = { usuario: 'a', nombre: 'A', rol: 'admin_porteria', sede: null }
+  const vacia = { template: '<div />' }
+  const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/sede', component: SedeView }, { path: '/admin', component: vacia }] })
+  router.push('/sede')
+  await router.isReady()
+  const w = mount(SedeView, { global: { plugins: [router] } })
+  await flushPromises()
+  expect(w.get('[data-test=sede-admin]').attributes('href')).toBe('/admin')
+})

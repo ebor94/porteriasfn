@@ -15,7 +15,7 @@ import MarcoGuarda from '@/components/MarcoGuarda.vue'
 
 async function montar() {
   const vacia = { template: '<div />' }
-  const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/inicio', component: vacia }, { path: '/login', component: vacia }, { path: '/sede', component: vacia }, { path: '/vehiculos', component: vacia }, { path: '/movimientos', component: vacia }] })
+  const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/inicio', component: vacia }, { path: '/login', component: vacia }, { path: '/sede', component: vacia }, { path: '/vehiculos', component: vacia }, { path: '/movimientos', component: vacia }, { path: '/admin', component: vacia }] })
   router.push('/inicio')
   await router.isReady()
   const w = mount(MarcoGuarda, { global: { plugins: [router] }, slots: { default: '<p>contenido</p>' } })
@@ -72,4 +72,12 @@ test('al confirmar sale al login y reinicia estado, eventos y catálogos', async
   expect(useEventosStore().delDia).toEqual([])
   expect(useEventosStore().total).toBe(0)
   expect(useCatalogosStore().cache).toEqual({})
+})
+
+test('el enlace a la administración solo aparece para el admin', async () => {
+  const { w } = await montar()
+  expect(w.find('[data-test=marco-admin]').exists()).toBe(false)
+  useAuthStore().usuario = { ...useAuthStore().usuario, rol: 'admin_porteria' }
+  await w.vm.$nextTick()
+  expect(w.get('[data-test=marco-admin]').attributes('href')).toBe('/admin')
 })

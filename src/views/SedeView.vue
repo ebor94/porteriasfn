@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { confirmar } from '@/composables/confirmar'
 import { rutaInterna } from '@/utils/rutas'
@@ -50,6 +50,7 @@ async function salir() {
         :disabled="enviando" :data-test="`sede-${s.id}`" @click="elegir(s.id)"
       >{{ s.nombre }}</button>
     </div>
+    <RouterLink v-if="auth.esAdmin" to="/admin" class="btn-secundario w-full" data-test="sede-admin">Ir a la administración</RouterLink>
     <button type="button" class="btn-secundario w-full" data-test="sede-salir" @click="salir">Salir</button>
   </main>
 </template>

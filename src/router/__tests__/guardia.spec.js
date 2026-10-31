@@ -5,7 +5,7 @@ const ruta = (path, meta = {}) => ({ path, fullPath: path, meta })
 const auth = (extra = {}) => ({ token: 't', usuario: { rol: 'guarda', sede: { id: 1 } }, sede: { id: 1 }, autenticado: true, rutaInicio: '/inicio', ...extra })
 
 test('rutas definidas', () => {
-  expect(routes.map((r) => r.path)).toEqual(['/', '/login', '/sin-conexion', '/sede', '/inicio', '/registrar/:sentido?', '/vehiculos', '/movimientos'])
+  expect(routes.map((r) => r.path)).toEqual(['/', '/login', '/sin-conexion', '/sede', '/inicio', '/registrar/:sentido?', '/vehiculos', '/movimientos', '/admin', '/admin/movimientos', '/admin/motivos', '/admin/proveedores'])
 })
 
 test('sin token → login con redirect', () => {
@@ -50,4 +50,11 @@ test('en rutas públicas distintas de /login no se llama a cargarPerfil', async 
   expect(sesion.cargarPerfil).not.toHaveBeenCalled()
   await guardia(ruta('/login', { publica: true }), { ...sesion, cargarPerfil: sesion.cargarPerfil })
   expect(sesion.cargarPerfil).toHaveBeenCalledTimes(1)
+})
+
+test('las rutas del admin exigen el rol', () => {
+  const admin = ruta('/admin/motivos', { requiereAdmin: true })
+  expect(decidirNavegacion(admin, auth({ esAdmin: false }))).toEqual({ path: '/inicio' })
+  expect(decidirNavegacion(admin, auth({ esAdmin: true, sede: null }))).toBe(true)
+  expect(decidirNavegacion(admin, { token: null })).toEqual({ path: '/login', query: { redirect: '/admin/motivos' } })
 })

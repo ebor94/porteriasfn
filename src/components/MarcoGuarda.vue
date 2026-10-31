@@ -32,6 +32,7 @@ async function salir() {
         <RouterLink to="/inicio" class="btn bg-primary-800 text-white text-base" active-class="ring-2 ring-white">Inicio</RouterLink>
         <RouterLink to="/vehiculos" class="btn bg-primary-800 text-white text-base" active-class="ring-2 ring-white">Vehículos</RouterLink>
         <RouterLink to="/movimientos" class="btn bg-primary-800 text-white text-base" active-class="ring-2 ring-white">Movimientos</RouterLink>
+        <RouterLink v-if="auth.esAdmin" to="/admin" class="btn bg-primary-800 text-white text-base" data-test="marco-admin">Administración</RouterLink>
       </nav>
     </header>
     <p v-if="auth.servicioNoDisponible" class="bg-red-700 text-white px-4 py-2 text-center font-semibold" role="alert" data-test="marco-servicio">

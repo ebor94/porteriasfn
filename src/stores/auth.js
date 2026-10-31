@@ -14,7 +14,11 @@ export const useAuthStore = defineStore('auth', {
     autenticado: (s) => Boolean(s.token && s.usuario),
     esAdmin: (s) => Boolean(s.usuario && s.usuario.rol === 'admin_porteria'),
     sede: (s) => (s.usuario && s.usuario.sede) || null,
-    rutaInicio: (s) => (s.usuario && s.usuario.sede ? '/inicio' : '/sede')
+    // El guarda empieza eligiendo sede; el admin sin sede, en la administración.
+    rutaInicio: (s) => {
+      if (s.usuario && s.usuario.sede) return '/inicio'
+      return s.usuario && s.usuario.rol === 'admin_porteria' ? '/admin' : '/sede'
+    }
   },
   actions: {
     fijarSesion(token, usuario) {
