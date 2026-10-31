@@ -1,8 +1,12 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { responder } from '@/composables/confirmar'
+
+// La raíz (start_url de la PWA) no tiene pantalla: la guardia la manda al inicio de cada usuario.
+const Raiz = { render: () => null }
 
 export const routes = [
-  { path: '/', redirect: '/inicio' },
+  { path: '/', component: Raiz, meta: { raiz: true } },
   { path: '/login', component: () => import('@/views/LoginView.vue'), meta: { publica: true } },
   { path: '/sin-conexion', component: () => import('@/views/SinConexionView.vue'), meta: { publica: true } },
   { path: '/sede', component: () => import('@/views/SedeView.vue') },
@@ -20,6 +24,7 @@ export function decidirNavegacion(to, auth) {
   const meta = to.meta || {}
   if (meta.publica) return to.path === '/login' && auth.autenticado ? { path: auth.rutaInicio } : true
   if (!auth.token) return { path: '/login', query: { redirect: to.fullPath } }
+  if (meta.raiz) return { path: auth.rutaInicio }
   if (meta.requiereAdmin && !auth.esAdmin) return { path: auth.rutaInicio }
   if (meta.requiereSede && !auth.sede) return { path: '/sede' }
   return true
@@ -44,7 +49,16 @@ export async function guardia(to, auth) {
   return decidirNavegacion(to, auth)
 }
 
+// Una confirmación abierta no sobrevive a un cambio de pantalla. Solo las navegaciones que llegaron:
+// una abortada o reemplazada no debe cerrar la confirmación que abrió la navegación que la reemplazó.
+export function cerrarConfirmacionAlNavegar(router) {
+  router.afterEach((to, from, fallo) => {
+    if (!fallo) responder(false)
+  })
+}
+
 const router = createRouter({ history: createWebHistory(import.meta.env.BASE_URL), routes })
 router.beforeEach((to) => guardia(to, useAuthStore()))
+cerrarConfirmacionAlNavegar(router)
 
 export default router
