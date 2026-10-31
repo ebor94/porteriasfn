@@ -42,7 +42,7 @@ async function guardar(datos) {
     toast.success(v ? 'Vehículo actualizado' : 'Vehículo agregado')
     edicion.value = null
   } catch (e) {
-    errorFormulario.value = e.message
+    errorFormulario.value = e.message || 'Ocurrió un error'
   } finally {
     guardando.value = false
   }
@@ -56,7 +56,7 @@ async function alternarActivo(v) {
     await proveedores.actualizar(v.id, { activo: !v.activo })
     toast.success(v.activo ? 'Vehículo inactivado' : 'Vehículo activado')
   } catch (e) {
-    error.value = e.message
+    error.value = e.message || 'Ocurrió un error'
   } finally {
     const resto = new Set(ocupado.value)
     resto.delete(v.id)

@@ -31,7 +31,7 @@ test('carga al entrar y busca al escribir', async () => {
   expect(porteria.get).toHaveBeenLastCalledWith('/vehiculos-externos', { params: { q: 'flo', incluir_inactivos: '1' } })
 })
 
-test('editar empresa y tipo', async () => {
+test('editar empresa', async () => {
   porteria.patch.mockResolvedValue({ data: vehiculo({ empresa: 'Flores del Norte' }) })
   const w = montar()
   await flushPromises()

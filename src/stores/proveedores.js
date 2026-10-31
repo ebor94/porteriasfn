@@ -2,14 +2,19 @@ import { defineStore } from 'pinia'
 import { porteria } from '@/services/api'
 import { useCatalogosStore } from '@/stores/catalogos'
 
+let secuenciaBusqueda = 0
+
 // Catálogo de proveedores visto por el admin: incluye inactivos para poder reactivarlos.
 export const useProveedoresStore = defineStore('proveedores', {
   state: () => ({ lista: [] }),
   actions: {
     async buscar(q) {
       const params = q ? { q, incluir_inactivos: '1' } : { incluir_inactivos: '1' }
-      this.lista = (await porteria.get('/vehiculos-externos', { params })).data
-      return this.lista
+      const mia = ++secuenciaBusqueda
+      const { data } = await porteria.get('/vehiculos-externos', { params })
+      // Solo la búsqueda más reciente escribe la lista: una respuesta vieja no la pisa.
+      if (mia === secuenciaBusqueda) this.lista = data
+      return data
     },
     async crear(datos) {
       const { data } = await porteria.post('/vehiculos-externos', datos)
