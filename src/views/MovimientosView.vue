@@ -15,6 +15,7 @@ const error = ref('')
 const cargando = ref(true)
 const procesando = ref(new Set())
 const dialogo = ref(null) // { tipo: 'anular' | 'km', evento }
+const cargandoMas = ref(false)
 
 onMounted(cargar)
 
@@ -27,6 +28,18 @@ async function cargar() {
     error.value = e.message
   } finally {
     cargando.value = false
+  }
+}
+
+async function cargarMas() {
+  error.value = ''
+  cargandoMas.value = true
+  try {
+    await eventos.cargarMas()
+  } catch (e) {
+    error.value = e.message
+  } finally {
+    cargandoMas.value = false
   }
 }
 
@@ -86,6 +99,10 @@ async function aceptar(valor) {
         </div>
       </li>
     </ul>
+    <button
+      v-if="eventos.total > eventos.delDia.length" type="button" class="btn-secundario w-full mt-3"
+      :disabled="cargandoMas" data-test="movimientos-mas" @click="cargarMas"
+    >{{ cargandoMas ? 'Cargando…' : 'Cargar más' }}</button>
     <DialogoTexto
       v-if="dialogo"
       :titulo="dialogo.tipo === 'anular' ? `Anular registro de ${dialogo.evento.placa}` : `Kilometraje de ${dialogo.evento.placa}`"

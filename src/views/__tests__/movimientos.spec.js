@@ -171,3 +171,27 @@ test('terminar una fila no desbloquea otra que sigue en proceso', async () => {
   envios[1].resolve({ data: { ...fila(1), anulado: true } })
   await flushPromises()
 })
+
+test('"Cargar más" trae la siguiente página', async () => {
+  porteria.get
+    .mockResolvedValueOnce({ data: { items: [fila(1), fila(2)], total: 3, pagina: 1 } })
+    .mockResolvedValueOnce({ data: { items: [fila(3)], total: 3, pagina: 2 } })
+  const w = montar()
+  await flushPromises()
+  await w.get('[data-test=movimientos-mas]').trigger('click')
+  await flushPromises()
+  expect(w.findAll('[data-test=movimiento-fila]')).toHaveLength(3)
+  expect(w.find('[data-test=movimientos-mas]').exists()).toBe(false)
+})
+
+test('si "Cargar más" falla, avisa y deja reintentar', async () => {
+  porteria.get
+    .mockResolvedValueOnce({ data: { items: [fila(1)], total: 2, pagina: 1 } })
+    .mockRejectedValueOnce({ status: 0, motivo: 'SIN_CONEXION', message: 'Sin conexión con el servidor' })
+  const w = montar()
+  await flushPromises()
+  await w.get('[data-test=movimientos-mas]').trigger('click')
+  await flushPromises()
+  expect(w.get('[data-test=movimientos-error]').text()).toBe('Sin conexión con el servidor')
+  expect(w.find('[data-test=movimientos-mas]').exists()).toBe(true)
+})

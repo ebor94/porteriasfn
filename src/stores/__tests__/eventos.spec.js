@@ -42,3 +42,15 @@ test('estado: sugerencia codifica la placa y cargarTodo trae dentro y fuera', as
   expect(estado.fuera).toEqual([{ placa: 'B' }])
   expect(estado.cargando).toBe(false)
 })
+
+test('cargar más pide la página siguiente del mismo día y no repite filas', async () => {
+  porteria.get
+    .mockResolvedValueOnce({ data: { items: [{ id: 9 }, { id: 8 }], total: 4, pagina: 1, por_pagina: 2 } })
+    .mockResolvedValueOnce({ data: { items: [{ id: 8 }, { id: 7 }], total: 4, pagina: 2, por_pagina: 2 } })
+  const ev = useEventosStore()
+  await ev.cargarDelDia('2026-10-05')
+  await ev.cargarMas()
+  expect(porteria.get).toHaveBeenLastCalledWith('/eventos', { params: { desde: '2026-10-05', hasta: '2026-10-05', pagina: 2 } })
+  expect(ev.delDia.map((e) => e.id)).toEqual([9, 8, 7])
+  expect(ev.pagina).toBe(2)
+})
