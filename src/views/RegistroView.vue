@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, ref, computed, watch, onMounted } from 'vue'
+import { reactive, ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import MarcoGuarda from '@/components/MarcoGuarda.vue'
@@ -44,6 +44,39 @@ const errorVisible = computed(() => error.value || (paso.value === 'motivo' ? mo
 let peticionMotivos = 0
 let peticionPlaca = 0
 
+// Autocompletar: con 2+ caracteres y 300 ms sin escribir se ofrecen placas del catálogo de proveedores.
+const proveedoresSugeridos = ref([])
+let peticionProveedores = 0
+let temporizadorProveedores = null
+
+function descartarProveedores() {
+  clearTimeout(temporizadorProveedores)
+  peticionProveedores += 1
+  proveedoresSugeridos.value = []
+}
+
+watch(() => estado.placa, (valor) => {
+  descartarProveedores()
+  const placa = normalizarPlaca(valor)
+  if (placa.length < 2 || (estado.sugerencia && estado.sugerencia.placa === placa)) return
+  const numero = peticionProveedores
+  temporizadorProveedores = setTimeout(async () => {
+    try {
+      const lista = await catalogos.vehiculosExternos(placa)
+      if (numero === peticionProveedores) proveedoresSugeridos.value = lista.slice(0, 5)
+    } catch {
+      // Es una ayuda: si falla, el guarda escribe la placa completa.
+    }
+  }, 300)
+}, { flush: 'sync' })
+
+onBeforeUnmount(() => clearTimeout(temporizadorProveedores))
+
+function usarProveedor(v) {
+  estado.placa = v.placa
+  consultarPlaca()
+}
+
 async function cargarMotivos() {
   const numero = ++peticionMotivos
   const { tipo, sentido } = estado
@@ -85,6 +118,7 @@ onMounted(async () => {
 })
 
 async function consultarPlaca() {
+  descartarProveedores()
   error.value = ''
   const placa = normalizarPlaca(estado.placa)
   if (!placa) {
@@ -99,6 +133,7 @@ async function consultarPlaca() {
     const sugerencia = await estadoStore.sugerir(placa)
     if (numero !== peticionPlaca) return
     aplicarSugerencia(estado, sugerencia)
+    descartarProveedores()
   } catch (e) {
     if (numero === peticionPlaca) error.value = e.message
   }
@@ -199,6 +234,13 @@ const etiquetaExequia = (x) => `${x.es_de_la_placa ? '★ ' : ''}${x.tipo || 'Ex
           <input id="placa" v-model="estado.placa" class="campo uppercase text-2xl tracking-widest" maxlength="20" autocapitalize="characters" data-test="registro-placa" @keyup.enter="consultarPlaca" />
           <button type="button" class="btn-secundario" data-test="registro-consultar" @click="consultarPlaca">Consultar</button>
         </div>
+        <ul v-if="proveedoresSugeridos.length" class="tarjeta divide-y p-0" data-test="registro-proveedores">
+          <li v-for="v in proveedoresSugeridos" :key="v.id">
+            <button type="button" class="w-full text-left px-4 min-h-tactil text-lg" data-test="registro-proveedor" @click="usarProveedor(v)">
+              <span class="font-bold tracking-wider">{{ v.placa }}</span> · {{ v.empresa }}
+            </button>
+          </li>
+        </ul>
         <div v-if="estado.sugerencia" class="tarjeta space-y-2">
           <p class="text-xl font-bold">{{ estado.sugerencia.placa }}</p>
           <p v-if="estado.sugerencia.vehiculo">Vehículo de la empresa · {{ estado.sugerencia.vehiculo.marca }} {{ estado.sugerencia.vehiculo.modelo }}</p>

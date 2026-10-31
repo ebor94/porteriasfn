@@ -440,3 +440,43 @@ test('consultar otra placa descarta la clave anterior', async () => {
   await avanzar(w)
   expect(porteria.post.mock.calls[1][1].clave_cliente).not.toBe(clave)
 })
+
+test('sugiere vehículos del catálogo de proveedores al escribir la placa', async () => {
+  const externos = [{ id: 4, placa: 'XYZ123', tipo: 'PROVEEDOR', empresa: 'Flores del Norte' }]
+  porteria.get.mockImplementation(async (url, opciones) => {
+    if (url === '/vehiculos-externos') return { data: opciones.params.q === 'XY' ? externos : [] }
+    if (url.startsWith('/estado/placa/')) return { data: { ...SUGERENCIA, placa: 'XYZ123', vehiculo: null, vehiculo_externo: externos[0], tipo_vehiculo: 'PROVEEDOR' } }
+    return { data: [] }
+  })
+  const { w } = await montar()
+  await w.get('[data-test=registro-placa]').setValue('x')
+  await vi.advanceTimersByTimeAsync(300)
+  await flushPromises()
+  expect(porteria.get).not.toHaveBeenCalledWith('/vehiculos-externos', expect.anything())
+  await w.get('[data-test=registro-placa]').setValue('xy')
+  await vi.advanceTimersByTimeAsync(300)
+  await flushPromises()
+  expect(porteria.get).toHaveBeenCalledWith('/vehiculos-externos', { params: { q: 'XY' } })
+  const sugerida = w.get('[data-test=registro-proveedor]')
+  expect(sugerida.text()).toBe('XYZ123 · Flores del Norte')
+  await sugerida.trigger('click')
+  await flushPromises()
+  expect(porteria.get).toHaveBeenCalledWith('/estado/placa/XYZ123')
+  expect(w.find('[data-test=registro-proveedor]').exists()).toBe(false)
+  await vi.advanceTimersByTimeAsync(300)
+  await flushPromises()
+  expect(w.find('[data-test=registro-proveedor]').exists()).toBe(false)
+})
+
+test('si el catálogo falla, no estorba', async () => {
+  porteria.get.mockImplementation(async (url) => {
+    if (url === '/vehiculos-externos') throw { status: 0, motivo: 'SIN_CONEXION', message: 'Sin conexión' }
+    return { data: [] }
+  })
+  const { w } = await montar()
+  await w.get('[data-test=registro-placa]').setValue('abc')
+  await vi.advanceTimersByTimeAsync(300)
+  await flushPromises()
+  expect(w.find('[data-test=registro-proveedor]').exists()).toBe(false)
+  expect(w.find('[data-test=registro-error]').exists()).toBe(false)
+})
