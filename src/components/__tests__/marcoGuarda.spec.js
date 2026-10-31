@@ -4,7 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { createRouter, createMemoryHistory } from 'vue-router'
 
 const confirmar = vi.hoisted(() => vi.fn())
-vi.mock('@/composables/confirmar', () => ({ confirmar }))
+vi.mock('@/composables/confirmar', () => ({ confirmar, responder: vi.fn() }))
 vi.mock('@/services/api', () => ({ porteria: { get: vi.fn(), post: vi.fn() }, tokenStorage: { leer: () => 't', guardar: () => {} } }))
 
 import { useAuthStore } from '@/stores/auth'

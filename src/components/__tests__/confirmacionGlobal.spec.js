@@ -1,5 +1,6 @@
 import { test, expect, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
+import { nextTick } from 'vue'
 import ConfirmacionGlobal from '@/components/ConfirmacionGlobal.vue'
 import { confirmar, responder } from '@/composables/confirmar'
 
@@ -32,4 +33,36 @@ test('una confirmación nueva cancela la anterior', async () => {
   expect(await primera).toBe(false)
   responder(true)
   expect(await segunda).toBe(true)
+})
+
+test('al abrir, el foco pasa a Cancelar; Escape resuelve false y devuelve el foco', async () => {
+  const disparador = document.createElement('button')
+  document.body.appendChild(disparador)
+  disparador.focus()
+  const w = mount(ConfirmacionGlobal, { attachTo: document.body })
+  const respuesta = confirmar('¿Borrar?', { aceptar: 'Borrar', peligro: true })
+  await flushPromises()
+  await nextTick()
+  const cancelar = w.get('[data-test=confirmacion-cancelar]').element
+  expect(document.activeElement).toBe(cancelar)
+  await w.get('[data-test=confirmacion-cancelar]').trigger('keydown', { key: 'Escape' })
+  expect(await respuesta).toBe(false)
+  await flushPromises()
+  expect(document.activeElement).toBe(disparador)
+  w.unmount()
+  disparador.remove()
+})
+
+test('Tab se queda dentro del diálogo', async () => {
+  const w = mount(ConfirmacionGlobal, { attachTo: document.body })
+  confirmar('¿Seguro?')
+  await flushPromises()
+  await nextTick()
+  const aceptar = w.get('[data-test=confirmacion-aceptar]')
+  aceptar.element.focus()
+  await aceptar.trigger('keydown', { key: 'Tab' })
+  expect(document.activeElement).toBe(w.get('[data-test=confirmacion-cancelar]').element)
+  await w.get('[data-test=confirmacion-cancelar]').trigger('keydown', { key: 'Tab', shiftKey: true })
+  expect(document.activeElement).toBe(aceptar.element)
+  w.unmount()
 })

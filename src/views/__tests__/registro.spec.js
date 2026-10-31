@@ -7,7 +7,7 @@ import { h } from 'vue'
 
 const esHistorial = vi.hoisted(() => vi.fn(() => false))
 const confirmar = vi.hoisted(() => vi.fn())
-vi.mock('@/composables/confirmar', () => ({ confirmar }))
+vi.mock('@/composables/confirmar', () => ({ confirmar, responder: vi.fn() }))
 vi.mock('@/utils/rutas', async (original) => ({ ...(await original()), esNavegacionDeHistorial: esHistorial }))
 
 vi.mock('@/services/api', () => ({

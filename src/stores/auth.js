@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { porteria, tokenStorage } from '@/services/api'
+import { responder } from '@/composables/confirmar'
 import { useCatalogosStore } from '@/stores/catalogos'
 import { useEstadoStore } from '@/stores/estado'
 import { useEventosStore } from '@/stores/eventos'
@@ -52,6 +53,8 @@ export const useAuthStore = defineStore('auth', {
       this.usuario = null
       this.sedes = []
       tokenStorage.guardar(null)
+      // Un diálogo de confirmación abierto no debe sobrevivir a la sesión.
+      responder(false)
       // Nada de la sesión anterior debe verse con la siguiente.
       useEstadoStore().$reset()
       useEventosStore().$reset()

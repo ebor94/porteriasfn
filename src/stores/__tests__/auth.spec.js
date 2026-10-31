@@ -11,6 +11,7 @@ vi.mock('@/services/api', () => {
 
 import { porteria, tokenStorage } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
+import { confirmar, confirmacion } from '@/composables/confirmar'
 
 const SEDES = [{ id: 1, codigo: 'N', nombre: 'Norte', ciudad: 'Cúcuta' }]
 
@@ -60,4 +61,13 @@ test('esAdmin y cargarSedes (una sola vez)', async () => {
   await auth.cargarSedes()
   expect(porteria.get).toHaveBeenCalledTimes(1)
   expect(porteria.get).toHaveBeenCalledWith('/catalogos/sedes')
+})
+
+test('logout cancela una confirmación abierta', async () => {
+  const auth = useAuthStore()
+  const respuesta = confirmar('¿Seguro?')
+  expect(confirmacion.abierta).toBe(true)
+  auth.logout()
+  expect(await respuesta).toBe(false)
+  expect(confirmacion.abierta).toBe(false)
 })
