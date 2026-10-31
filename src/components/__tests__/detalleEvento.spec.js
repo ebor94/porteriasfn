@@ -112,3 +112,55 @@ test('anular pide el motivo; un anulado no ofrece acciones', async () => {
   expect(w.find('[data-test=detalle-corregir]').exists()).toBe(false)
   expect(w.text()).toContain('Duplicado')
 })
+
+test('volver al motivo original recupera su referencia', async () => {
+  const ASIST = { id: 1, nombre: 'Asistencia', tipo_referencia: 'ASISTENCIA', referencia_obligatoria: true }
+  porteria.get.mockImplementation(async (url) => (url === '/catalogos/motivos' ? { data: [ASIST, ...MOTIVOS] } : { data: [] }))
+  porteria.patch.mockResolvedValue({ data: evento({ motivo_id: 1, asistencia_id: 77, kilometraje: 1250 }) })
+  const w = montar(evento({
+    motivo_id: 1, motivo: { id: 1, nombre: 'Asistencia' }, asistencia_id: 77, referencia: { codigo: 'A-77', nombre_ser_querido: 'Ana' }
+  }))
+  await flushPromises()
+  await w.get('[data-test=detalle-corregir]').trigger('click')
+  await flushPromises()
+  await w.get('[data-test=correccion-motivo]').setValue('6')
+  await w.get('[data-test=correccion-motivo]').setValue('1')
+  expect(w.text()).toContain('Elegida: A-77 · Ana')
+  await w.get('[data-test=correccion-km]').setValue('1250')
+  await w.get('[data-test=correccion-guardar]').trigger('click')
+  await flushPromises()
+  expect(w.find('[data-test=detalle-error]').exists()).toBe(false)
+  expect(porteria.patch).toHaveBeenCalledWith('/eventos/10', { kilometraje: 1250 })
+})
+
+test('si no cargan los motivos, muestra el error y no deja guardar', async () => {
+  porteria.get.mockImplementation(async (url) => {
+    if (url === '/catalogos/motivos') throw { status: 0, motivo: 'SIN_CONEXION', message: 'Sin conexión con el servidor' }
+    return { data: [] }
+  })
+  const w = montar()
+  await flushPromises()
+  await w.get('[data-test=detalle-corregir]').trigger('click')
+  await flushPromises()
+  expect(w.get('[data-test=detalle-error]').text()).toBe('Sin conexión con el servidor')
+  expect(w.get('[data-test=correccion-guardar]').element.disabled).toBe(true)
+})
+
+test('corrige la empresa de un proveedor con el conductor completo', async () => {
+  const TEXTO = { id: 3, nombre: 'Entrega', tipo_referencia: 'TEXTO', referencia_obligatoria: true }
+  porteria.get.mockImplementation(async (url) => (url === '/catalogos/motivos' ? { data: [TEXTO] } : { data: [] }))
+  porteria.patch.mockResolvedValue({ data: evento({ tipo_vehiculo: 'PROVEEDOR', empresa: 'Flores SAS' }) })
+  const w = montar(evento({
+    tipo_vehiculo: 'PROVEEDOR', motivo_id: 3, motivo: { id: 3, nombre: 'Entrega' }, referencia_texto: 'Factura 1', conductor_usuario: null,
+    conductor_nombre: 'Luis', conductor_documento: '1090', empresa: 'Flores', kilometraje: null
+  }))
+  await flushPromises()
+  await w.get('[data-test=detalle-corregir]').trigger('click')
+  await flushPromises()
+  await w.get('[data-test=correccion-empresa]').setValue('Flores SAS')
+  await w.get('[data-test=correccion-guardar]').trigger('click')
+  await flushPromises()
+  expect(porteria.patch).toHaveBeenCalledWith('/eventos/10', {
+    conductor_otro: false, conductor_usuario: null, conductor_nombre: 'Luis', conductor_documento: '1090', empresa: 'Flores SAS'
+  })
+})

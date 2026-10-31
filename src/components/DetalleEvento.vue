@@ -21,6 +21,7 @@ const anulando = ref(false)
 const guardando = ref(false)
 const error = ref('')
 const motivos = ref([])
+const motivosCargados = ref(false)
 const f = reactive(formularioCorreccion(props.evento))
 const esPropio = computed(() => props.evento.tipo_vehiculo === 'PROPIO')
 const motivo = computed(() => motivos.value.find((m) => m.id === f.motivoId) || null)
@@ -33,6 +34,7 @@ watch(() => props.evento, (e) => Object.assign(f, formularioCorreccion(e)))
 async function abrirCorreccion() {
   error.value = ''
   editando.value = true
+  motivosCargados.value = false
   try {
     const lista = await catalogos.motivos(props.evento.tipo_vehiculo, props.evento.sentido)
     // El motivo actual puede estar inactivo: se ofrece igual para no perderlo.
@@ -40,6 +42,7 @@ async function abrirCorreccion() {
     motivos.value = lista.some((m) => m.id === props.evento.motivo_id) || !actual
       ? lista
       : [{ id: props.evento.motivo_id, nombre: `${actual.nombre} (inactivo)`, tipo_referencia: 'NINGUNA', referencia_obligatoria: false }, ...lista]
+    motivosCargados.value = true
   } catch (e) {
     error.value = e.message
   }
@@ -47,7 +50,10 @@ async function abrirCorreccion() {
 
 function elegirMotivo(id) {
   f.motivoId = Number(id)
-  f.referencia = { asistenciaId: null, exequiaId: null, texto: '', etiqueta: '' }
+  // Volver al motivo del evento recupera su referencia, para no enviarla vacía sin querer.
+  f.referencia = f.motivoId === props.evento.motivo_id
+    ? formularioCorreccion(props.evento).referencia
+    : { asistenciaId: null, exequiaId: null, texto: '', etiqueta: '' }
 }
 
 const buscarConductor = async (q) => {
@@ -197,7 +203,7 @@ async function anular(motivoAnulacion) {
         </div>
         <div class="grid grid-cols-2 gap-3">
           <button type="button" class="btn-secundario" :disabled="guardando" data-test="correccion-cancelar" @click="cancelarCorreccion">Cancelar</button>
-          <button type="button" class="btn-primario" :disabled="guardando" data-test="correccion-guardar" @click="guardar">{{ guardando ? 'Guardando…' : 'Guardar' }}</button>
+          <button type="button" class="btn-primario" :disabled="guardando || !motivosCargados" data-test="correccion-guardar" @click="guardar">{{ guardando ? 'Guardando…' : 'Guardar' }}</button>
         </div>
       </section>
     </div>

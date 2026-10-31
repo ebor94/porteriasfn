@@ -42,10 +42,30 @@ const conductorActual = (e) => ({
   empresa: e.empresa ?? null
 })
 
+// Bloque de referencia a enviar, o null si no cambió. El servidor conserva la referencia del evento sin
+// volver a resolverla cuando no llega ningún campo de referencia, así que solo se valida si viaja.
+function referenciaACambiar(f, e, motivo) {
+  const r = f.referencia
+  const tipoRef = motivo ? motivo.tipo_referencia : 'NINGUNA'
+  const referencia = {
+    motivo_id: f.motivoId,
+    asistencia_id: tipoRef === 'ASISTENCIA' ? r.asistenciaId : null,
+    exequia_id: tipoRef === 'EXEQUIA' ? r.exequiaId : null,
+    referencia_texto: tipoRef === 'TEXTO' ? texto(r.texto) : null
+  }
+  const refActual = {
+    motivo_id: e.motivo_id,
+    asistencia_id: tipoRef === 'ASISTENCIA' ? e.asistencia_id ?? null : null,
+    exequia_id: tipoRef === 'EXEQUIA' ? e.exequia_id ?? null : null,
+    referencia_texto: tipoRef === 'TEXTO' ? e.referencia_texto ?? null : null
+  }
+  return JSON.stringify(referencia) !== JSON.stringify(refActual) ? referencia : null
+}
+
 export function validarCorreccion(f, e, motivo) {
   if (!f.motivoId || !motivo) return 'Elige el motivo'
   const r = f.referencia
-  if (motivo.referencia_obligatoria) {
+  if (motivo.referencia_obligatoria && referenciaACambiar(f, e, motivo)) {
     if (motivo.tipo_referencia === 'ASISTENCIA' && !r.asistenciaId) return 'Selecciona la asistencia'
     if (motivo.tipo_referencia === 'EXEQUIA' && !r.exequiaId) return 'Selecciona la exequia'
     if (motivo.tipo_referencia === 'TEXTO' && !texto(r.texto)) return 'Escribe la referencia'
@@ -65,21 +85,8 @@ export function validarCorreccion(f, e, motivo) {
 
 export function cambiosCorreccion(f, e, motivo) {
   const cambios = {}
-  const r = f.referencia
-  const tipoRef = motivo ? motivo.tipo_referencia : 'NINGUNA'
-  const referencia = {
-    motivo_id: f.motivoId,
-    asistencia_id: tipoRef === 'ASISTENCIA' ? r.asistenciaId : null,
-    exequia_id: tipoRef === 'EXEQUIA' ? r.exequiaId : null,
-    referencia_texto: tipoRef === 'TEXTO' ? texto(r.texto) : null
-  }
-  const refActual = {
-    motivo_id: e.motivo_id,
-    asistencia_id: tipoRef === 'ASISTENCIA' ? e.asistencia_id ?? null : null,
-    exequia_id: tipoRef === 'EXEQUIA' ? e.exequia_id ?? null : null,
-    referencia_texto: tipoRef === 'TEXTO' ? e.referencia_texto ?? null : null
-  }
-  if (JSON.stringify(referencia) !== JSON.stringify(refActual)) Object.assign(cambios, referencia)
+  const referencia = referenciaACambiar(f, e, motivo)
+  if (referencia) Object.assign(cambios, referencia)
 
   const conductor = conductorDe(f, e)
   if (JSON.stringify(conductor) !== JSON.stringify(conductorActual(e))) Object.assign(cambios, conductor)

@@ -66,3 +66,10 @@ test('proveedor sin empresa o documento; forzado sin observación', () => {
   expect(validarCorreccion({ ...formularioCorreccion(forzado), observaciones: '' }, forzado, NINGUNA)).toBe('El registro forzado necesita una observación')
   expect(validarCorreccion(formularioCorreccion(propio), propio, NINGUNA)).toBeNull()
 })
+
+test('la referencia solo se valida si viaja: un motivo que luego pasó a obligatorio no bloquea otras correcciones', () => {
+  const viejo = { ...propio, motivo_id: 1 }
+  const f = { ...formularioCorreccion(viejo), kilometraje: '1300' }
+  expect(validarCorreccion(f, viejo, ASIST)).toBeNull()
+  expect(cambiosCorreccion(f, viejo, ASIST)).toEqual({ kilometraje: 1300 })
+})
