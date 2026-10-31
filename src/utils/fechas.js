@@ -20,3 +20,9 @@ export function haceCuanto(valor, ahora = new Date()) {
   const dias = Math.floor(horas / 24)
   return `hace ${dias} ${dias === 1 ? 'día' : 'días'}`
 }
+
+export function fechaHora(valor) {
+  if (!valor) return ''
+  const f = new Date(valor)
+  return `${hoyLocal(f)} ${horaCorta(f)}`
+}

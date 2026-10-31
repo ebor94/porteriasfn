@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { hoyLocal, horaCorta, haceCuanto } from '@/utils/fechas'
+import { hoyLocal, horaCorta, haceCuanto, fechaHora } from '@/utils/fechas'
 
 test('hoyLocal usa la fecha del dispositivo', () => {
   expect(hoyLocal(new Date(2026, 9, 5, 23, 59))).toBe('2026-10-05')
@@ -22,4 +22,9 @@ test.each([
 
 test('haceCuanto sin valor', () => {
   expect(haceCuanto(null)).toBe('')
+})
+
+test('fechaHora en hora local', () => {
+  expect(fechaHora(new Date(2026, 9, 5, 7, 4))).toBe('2026-10-05 07:04')
+  expect(fechaHora(null)).toBe('')
 })

@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { porteria, tokenStorage } from '@/services/api'
 import { responder } from '@/composables/confirmar'
 import { useCatalogosStore } from '@/stores/catalogos'
+import { useConsultaStore } from '@/stores/consulta'
 import { useEstadoStore } from '@/stores/estado'
 import { useEventosStore } from '@/stores/eventos'
 import { useMotivosStore } from '@/stores/motivos'
@@ -63,6 +64,7 @@ export const useAuthStore = defineStore('auth', {
       useCatalogosStore().limpiar()
       useMotivosStore().$reset()
       useProveedoresStore().$reset()
+      useConsultaStore().$reset()
     }
   }
 })
