@@ -14,6 +14,7 @@ export default defineConfig({
       manifest: {
         name: 'Portería Los Olivos',
         short_name: 'Portería',
+        lang: 'es',
         start_url: '/porteria/',
         scope: '/porteria/',
         display: 'standalone',
