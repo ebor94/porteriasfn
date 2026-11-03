@@ -19,11 +19,15 @@ export default defineConfig({
         display: 'standalone',
         background_color: '#f9fafb',
         theme_color: '#005a3d',
-        icons: [{ src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml' }]
+        icons: [
+          { src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml' },
+          { src: 'icono-192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'icono-512.png', sizes: '512x512', type: 'image/png' }
+        ]
       },
       workbox: {
         // Solo el shell: la portería necesita red para registrar (sin modo offline, decisión 7 del diseño).
-        globPatterns: ['**/*.{js,css,html,svg}'],
+        globPatterns: ['**/*.{js,css,html,svg,png}'],
         navigateFallback: '/porteria/index.html',
         navigateFallbackDenylist: [/^\/api\//]
       }

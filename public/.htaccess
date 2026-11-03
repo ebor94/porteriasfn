@@ -1,0 +1,34 @@
+# Portería (Vue 3 + Vite) bajo /porteria/ — AppServ (Apache 2.2 en Windows).
+# Vite lo copia de public/ a dist/ en cada build: es la única fuente; no editarlo en el servidor.
+# Solo directivas de Apache 2.2 (sin Require/Order de 2.4). Lo que depende de un módulo va en <IfModule>.
+
+Options -Indexes -MultiViews
+DirectoryIndex index.html
+
+# La app usa rutas del historial (/porteria/inicio, /porteria/admin/…): todo lo que no sea un archivo
+# o carpeta real se sirve con index.html. mod_rewrite en .htaccess exige FollowSymLinks.
+<IfModule mod_rewrite.c>
+  Options +FollowSymLinks
+  RewriteEngine On
+  RewriteBase /porteria/
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+  RewriteRule ^ index.html [L]
+</IfModule>
+
+# index.html y el service worker nunca se cachean: así una versión nueva llega a las casetas.
+<IfModule mod_headers.c>
+  <FilesMatch "^(index\.html|sw\.js)$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate, max-age=0"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+  </FilesMatch>
+</IfModule>
+
+<IfModule mod_mime.c>
+  AddType application/javascript .js
+  AddType application/manifest+json .webmanifest
+  AddType image/svg+xml .svg
+  AddType image/png .png
+</IfModule>
