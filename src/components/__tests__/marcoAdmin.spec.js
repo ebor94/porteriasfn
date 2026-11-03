@@ -33,6 +33,7 @@ test('muestra título, usuario, navegación y contenido', async () => {
   expect(w.findAll('[data-test=admin-nav] a').map((a) => a.attributes('href'))).toEqual([
     '/admin/movimientos', '/admin/motivos', '/admin/proveedores', '/inicio',
   ])
+  expect(w.findAll('[data-test=admin-nav] a').map((a) => a.text())).toEqual(['Movimientos', 'Motivos', 'Proveedores', 'Sede'])
   expect(w.text()).toContain('contenido')
 })
 

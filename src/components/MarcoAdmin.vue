@@ -11,7 +11,7 @@ const ENLACES = [
   { a: '/admin/movimientos', texto: 'Movimientos' },
   { a: '/admin/motivos', texto: 'Motivos' },
   { a: '/admin/proveedores', texto: 'Proveedores' },
-  { a: '/inicio', texto: 'Caseta' }
+  { a: '/inicio', texto: 'Sede' }
 ]
 
 async function salir() {

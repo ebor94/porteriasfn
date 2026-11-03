@@ -8,7 +8,7 @@ export const useEventosStore = defineStore('eventos', {
     async registrar(cuerpo) {
       return (await porteria.post('/eventos', cuerpo)).data
     },
-    // Primera página (50): suficiente para el día de una caseta; si no, el admin consulta en reportes.
+    // Primera página (50): suficiente para el día de una sede; si no, el admin consulta en reportes.
     async cargarDelDia(hoy = hoyLocal()) {
       const { data } = await porteria.get('/eventos', { params: { desde: hoy, hasta: hoy } })
       this.dia = hoy

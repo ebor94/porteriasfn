@@ -19,7 +19,7 @@ DirectoryIndex index.html
   RewriteRule ^ index.html [L]
 </IfModule>
 
-# index.html y el service worker nunca se cachean: así una versión nueva llega a las casetas.
+# index.html y el service worker nunca se cachean: así una versión nueva llega a las sedes.
 <IfModule mod_headers.c>
   <FilesMatch "^(index\.html|sw\.js)$">
     Header set Cache-Control "no-cache, no-store, must-revalidate, max-age=0"
