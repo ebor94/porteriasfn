@@ -14,8 +14,8 @@ DirectoryIndex index.html
   RewriteCond %{REQUEST_FILENAME} -f [OR]
   RewriteCond %{REQUEST_FILENAME} -d
   RewriteRule ^ - [L]
-  # Un asset que ya no existe (versión vieja en caché) da 404, no index.html servido como JS.
-  RewriteRule ^assets/ - [R=404,L]
+  # Un asset que ya no existe (versión vieja en caché) responde 410 en vez de index.html servido como JS.
+  RewriteRule ^assets/ - [G]
   RewriteRule ^ index.html [L]
 </IfModule>
 
