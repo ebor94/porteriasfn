@@ -106,17 +106,17 @@ test('un admin sin sede va directo al redirect, sin pasar por elegir sede', asyn
   expect(ruta.fullPath).toBe('/admin/motivos')
 })
 
-test('tiene el aspecto del login de home360: logo, título, ayuda de credenciales y pie', async () => {
+test('tiene el aspecto del login de home360: logo, título y pie, sin la ayuda de dominio', async () => {
   const { w } = await montar()
   const logo = w.get('[data-test=login-logo]')
   expect(logo.attributes('src')).toBe('/porteria/logo-olivos.webp')
   expect(logo.attributes('alt')).toBe('Serfunorte Los Olivos')
   expect(w.get('h1').text()).toBe('Portería')
   expect(w.get('h2').text()).toBe('Iniciar sesión')
-  expect(w.text()).toContain('Usa tus credenciales de red (dominio olivos.local)')
+  expect(w.text()).not.toContain('olivos.local')
   expect(w.get('label[for=usuario]').text()).toBe('Usuario de red')
   expect(w.get('[data-test=login-usuario]').attributes('placeholder')).toBe('Ej: jperez')
-  expect(w.get('[data-test=login-clave]').attributes('placeholder')).toBe('Contraseña de Windows')
+  expect(w.get('[data-test=login-clave]').attributes('placeholder')).toBe('Contraseña')
   expect(w.get('[data-test=login-entrar]').text()).toContain('Ingresar')
   expect(w.get('[data-test=login-pie]').text()).toBe('Tecnologías de la información, Serfunorte Los Olivos')
 })

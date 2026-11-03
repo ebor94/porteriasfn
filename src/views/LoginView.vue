@@ -51,10 +51,7 @@ async function entrar() {
       </div>
 
       <form class="bg-white rounded-2xl shadow-2xl p-8 space-y-4" @submit.prevent="entrar">
-        <div>
-          <h2 class="text-gray-800 font-bold text-lg mb-1">Iniciar sesión</h2>
-          <p class="text-gray-500 text-sm">Usa tus credenciales de red (dominio olivos.local)</p>
-        </div>
+        <h2 class="text-gray-800 font-bold text-lg">Iniciar sesión</h2>
         <p v-if="auth.servicioNoDisponible" class="aviso-error" role="alert" data-test="login-servicio">
           Portería no está disponible en este momento. Avisa a TI.
         </p>
@@ -68,7 +65,7 @@ async function entrar() {
         <div>
           <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1" for="clave">Contraseña</label>
           <div class="relative">
-            <input id="clave" v-model="clave" :type="verClave ? 'text' : 'password'" class="campo border rounded-lg pr-14 focus:ring-2 focus:ring-[#2d9957]" placeholder="Contraseña de Windows" autocomplete="current-password" data-test="login-clave" />
+            <input id="clave" v-model="clave" :type="verClave ? 'text' : 'password'" class="campo border rounded-lg pr-14 focus:ring-2 focus:ring-[#2d9957]" placeholder="Contraseña" autocomplete="current-password" data-test="login-clave" />
             <button
               type="button" class="absolute right-0 top-0 min-h-tactil min-w-tactil text-xl"
               :aria-label="verClave ? 'Ocultar contraseña' : 'Mostrar contraseña'" :aria-pressed="verClave"
