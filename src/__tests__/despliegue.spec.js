@@ -24,6 +24,10 @@ test('.htaccess: fallback de SPA en /porteria/ y sin caché para index.html y sw
   expect(h).not.toMatch(/^\s*Require\s/m)
 })
 
+test('.htaccess: Apache 2.2 no conoce .webp; sin el tipo, nosniff puede impedir que se vea el logo', () => {
+  expect(leer('public/.htaccess')).toMatch(/AddType image\/webp \.webp/)
+})
+
 test('íconos PNG de 192 y 512 para instalar en Android', () => {
   expect(tamanoPng('public/icono-192.png')).toEqual([192, 192])
   expect(tamanoPng('public/icono-512.png')).toEqual([512, 512])
