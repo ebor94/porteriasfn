@@ -28,7 +28,7 @@ export default defineConfig({
       },
       workbox: {
         // Solo el shell: la portería necesita red para registrar (sin modo offline, decisión 7 del diseño).
-        globPatterns: ['**/*.{js,css,html,svg,png}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,webp}'],
         navigateFallback: '/porteria/index.html',
         navigateFallbackDenylist: [/^\/api\//]
       }

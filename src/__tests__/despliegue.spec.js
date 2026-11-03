@@ -33,6 +33,7 @@ test('el manifest declara los PNG y el service worker los precachea', () => {
   const v = leer('vite.config.js')
   expect(v).toMatch(/src: 'icono-192\.png', sizes: '192x192', type: 'image\/png'/)
   expect(v).toMatch(/src: 'icono-512\.png', sizes: '512x512', type: 'image\/png'/)
-  expect(v).toMatch(/globPatterns: \['\*\*\/\*\.\{js,css,html,svg,png\}'\]/)
+  expect(v).toMatch(/globPatterns: \['\*\*\/\*\.\{js,css,html,svg,png,webp\}'\]/)
   expect(existsSync(raiz('public/favicon.svg'))).toBe(true)
+  expect(existsSync(raiz('public/logo-olivos.webp'))).toBe(true)
 })
